@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Server",
+            "program": "${workspaceFolder}/thesis-management-api/index.js", // Path to your entry file
+            "envFile": "${workspaceFolder}/thesis-management-api/.env", // Load environment variables
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to Process",
+            "processId": "${command:PickProcess}/thesis-management-api",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
