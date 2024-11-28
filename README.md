@@ -1,1 +1,1 @@
-# thesis-management
+# thesis-management web app
