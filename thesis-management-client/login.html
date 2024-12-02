@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cabin:ital,wght@0,400..700;1,400..700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Login</title>
+  </head>
+  <body>
+    <div class="form-container">
+      <div class="logo-container">
+        <img src="public/logo.png" alt="ThesisFlow Logo" />
+        <h1>ThesisFlow</h1>
+      </div>
+      <form id="loginForm">
+        <div class="form-group">
+          <h1>Login</h1>
+          <label for="username">Username:</label>
+          <input type="text" id="username" name="username" required />
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required />
+        </div>
+        <button type="submit">Login</button>
+      </form>
+    </div>
+    <script
+      src="/thesis-management-client/scripts/login.js"
+      type="module"
+    ></script>
+  </body>
+</html>

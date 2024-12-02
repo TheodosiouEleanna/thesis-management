@@ -2,24 +2,22 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { sendResponse } = require("../utils");
 
-const authenticateWithRedirect = (req, res, next) => {
+const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    res.writeHead(302, { Location: "/login" });
-    return res.end();
+    return sendResponse(res, 401, { error: "Unauthorized" });
   }
 
   const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Attach user data to the request object
+    req.user = decoded;
     next();
   } catch (err) {
-    res.writeHead(302, { Location: "/login" });
-    res.end();
+    sendResponse(res, 401, { error: "Invalid or expired token" });
   }
 };
 
-module.exports = { authenticateWithRedirect };
+module.exports = { authenticate };

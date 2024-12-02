@@ -4,6 +4,8 @@ const { getRequestBody, sendResponse } = require("../utils");
 const { dbQuery } = require("../db");
 
 const loginRoutes = async (req, res) => {
+  if (req.method === "GET") {
+  }
   if (req.method !== "POST") {
     return sendResponse(res, 405, { error: "Method not allowed" });
   }
