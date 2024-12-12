@@ -33,7 +33,7 @@ const loginRoutes = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRATION || "1h" }
     );
 
-    sendResponse(res, 200, { token });
+    sendResponse(res, 200, { token, user: user });
   } catch (error) {
     console.error("Login error:", error);
     sendResponse(res, 500, { error: "Internal server error" });

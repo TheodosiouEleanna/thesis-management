@@ -3,19 +3,22 @@ const fs = require("fs");
 const path = require("path");
 const { authenticate } = require("./middleware/authMiddleware");
 const { sendResponse } = require("./utils");
-const loginRoutes = require("./routes/loginRoutes");
+const loginRoutes = require("./routes/login");
 const { pool } = require("./db");
 require("dotenv").config(); // Load .env variables
 const PORT = process.env.APP_PORT || 5000;
 const logger = require("./logger");
-const routes = require("./routes/routes");
+const protectedRoutes = require("./routes/routes");
 
 const server = http.createServer((req, res) => {
   const url = req.url;
   const method = req.method;
   // Add CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (method === "OPTIONS") {
@@ -42,7 +45,7 @@ const server = http.createServer((req, res) => {
 
 // Centralized route handler
 const routeHandler = (req, res, pathParts) => {
-  const route = routes[pathParts[0]]; // Dynamically match route
+  const route = protectedRoutes[pathParts[0]]; // Dynamically match route
   if (route) {
     return logger(req, res, route(req, res, pathParts));
   }
@@ -56,7 +59,7 @@ server.listen(PORT, () => {
   try {
     const res = await pool.query('SELECT * FROM "thesis-management".users');
     console.log("Users:", res.rows);
-    console.log({ routes });
+    console.log({ protectedRoutes });
   } catch (err) {
     console.error("Database query error:", err);
   }

@@ -5,8 +5,8 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Server",
-            "program": "${workspaceFolder}/thesis-management-api/server.js", // Path to your entry file
-            "envFile": "${workspaceFolder}/thesis-management-api/.env", // Load environment variables
+            "program": "${workspaceFolder}/thesis-management-api/server.js",
+            "envFile": "${workspaceFolder}/thesis-management-api/.env",
             "args": [],
             "cwd": "${workspaceFolder}",
             "internalConsoleOptions": "neverOpen"
@@ -15,7 +15,7 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Client",
-            "program": "${workspaceFolder}/thesis-management-client/src/index.js", // Path to your entry file
+            "program": "${workspaceFolder}/thesis-management-client/src/index.js",
             "args": [],
             "cwd": "${workspaceFolder}",
             "internalConsoleOptions": "neverOpen"

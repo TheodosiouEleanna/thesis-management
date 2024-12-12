@@ -4,15 +4,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard</title>
+    <link
+      rel="stylesheet"
+      href="/thesis-management-client/styles/dashboard.css"
+    />
   </head>
   <body>
-    <h1>Welcome to the Dashboard</h1>
+    <header>
+      <div id="logo-container">
+        <img src="public/logo.png" alt="ThesisFlow Logo" id="logo" />
+        <h1 id="dashboard-title">ThesisFlow</h1>
+      </div>
+      <button id="logout-button">Logout</button>
+    </header>
+    <div id="menu-container">
+      <!-- Static placeholders for menu items -->
+      <div id="role-specific-menu">
+        <!-- Dynamic sections will be added here -->
+      </div>
+    </div>
+    <!-- <main id="content">
+      <!-- Dynamic Content Here -->
+    </main> -->
     <script
       src="/thesis-management-client/scripts/dashboard.js"
       type="module"
     ></script>
     <script
       src="/thesis-management-client/scripts/validateSession.js"
+      type="module"
+    ></script>
+    <script
+      src="/thesis-management-client/scripts/logout.js"
       type="module"
     ></script>
   </body>

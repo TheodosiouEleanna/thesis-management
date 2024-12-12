@@ -1,8 +1,6 @@
 const fs = require("fs");
 const path = require("path");
 
-const logFile = path.join(__dirname, "server.log");
-
 function logger(req, res) {
   const startTime = Date.now();
 

@@ -23,7 +23,8 @@ document
       const responseBody = await response.json();
 
       if (response.ok) {
-        localStorage.setItem("authToken", responseBody.token); // Use response token if available
+        localStorage.setItem("authToken", responseBody.token);
+        localStorage.setItem("user", JSON.stringify(responseBody.user));
         window.location.href = "dashboard.html";
       } else {
         // Display the error message from the server

@@ -1,0 +1,367 @@
+/* General Styling */
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(
+    135deg,
+    #8e7cc3,
+    #aacfbf
+  ); /* Muted purple to green gradient */
+}
+
+/* Header Styling */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #aacfbf; /* Soft purple */
+  padding: 1rem 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#logo {
+  height: 80px;
+  width: auto;
+}
+
+/* Menu Styling */
+nav {
+  display: flex;
+  gap: 10px;
+}
+
+h1 {
+  font-size: 1.6em;
+  text-align: center;
+  color: #6c5b7b; /* Soft purple */
+}
+
+#menu-container {
+  padding: 2rem;
+  min-height: 70vh;
+  background-color: #f9f9f9; /* Light grayish white */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin: 2rem auto;
+  max-width: 1200px;
+}
+
+/* Menu Section */
+.menu-section {
+  margin-bottom: 1rem;
+  border: 1px solid #8e7cc3; /* Muted purple */
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.menu-header {
+  background-color: #6c5b7b; /* Soft purple */
+  color: #fff;
+  padding: 0.8rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+}
+
+.menu-header:hover {
+  background-color: #8e7cc3;
+  /* Muted purple for hover */
+}
+
+.menu-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: #fff;
+  padding: 1rem;
+  color: #333;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.menu-body.collapsed {
+  max-height: 0;
+}
+
+.menu-body:not(.collapsed) {
+  max-height: fit-content;
+}
+
+/* Icon Styling */
+.icon {
+  font-size: 0.8rem;
+  transition: transform 0.3s ease;
+}
+
+.icon.expanded {
+  transform: rotate(90deg); /* Rotate when expanded */
+}
+
+/* Content Area */
+main {
+  padding: 2rem;
+  background: #f9f9f9; /* Light grayish white for content area */
+  color: #333;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-width: 1200px;
+  margin: 2rem auto;
+}
+
+/* Buttons for Other Sections */
+button {
+  width: 100%;
+  padding: 12px;
+  background: #5a485e;
+  color: #fff;
+  border: none;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+button:hover {
+  background: #aacfbf; /* Muted green for hover */
+  box-shadow: #8e7cc3; /* Green shadow */
+}
+
+button:active {
+  background: #8e7cc3; /* Darker muted purple */
+}
+
+/* Form Styling */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  position: relative;
+  padding-bottom: 60px;
+}
+
+input,
+select,
+textarea {
+  width: 60%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  font-size: 0.8rem;
+}
+
+#save-profile-button {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 10px;
+  width: 80px;
+  background: #5a485e;
+  color: #fff;
+  border: none;
+  font-size: 0.8em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+button:hover {
+  background-color: #aacfbf;
+}
+
+h3 {
+  color: #6c5b7b;
+  margin-bottom: 1rem;
+}
+
+#logout-button {
+  width: 60px;
+  background: #6c5b7b;
+  right: 0;
+  bottom: 0px;
+  padding: 0.5rem;
+  color: white;
+  border: none;
+  width: 100px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#committee-members {
+  width: 100%;
+  height: 150px;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #cccccc;
+  background-color: #f9f9f9;
+  color: #333;
+  outline: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+#committee-members:focus {
+  border-color: #4caf50;
+  box-shadow: 0 0 10px #4caf50;
+}
+
+#committee-members option {
+  padding: 10px;
+  font-size: 16px;
+  background-color: #ffffff;
+  color: #333;
+}
+
+#committee-members option:hover {
+  background-color: #e0e0e0;
+}
+
+#committee-members::-webkit-scrollbar {
+  width: 8px;
+}
+
+#committee-members::-webkit-scrollbar-thumb {
+  background-color: #4caf50;
+  border-radius: 8px;
+}
+
+#committee-members::-webkit-scrollbar-track {
+  background-color: #f1f1f1;
+  border-radius: 8px;
+}
+
+#invited-members-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+}
+
+.invited-member-card {
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 10px 15px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.invited-member-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+}
+
+.invitation-icon {
+  width: 15px;
+  height: 15px;
+  margin-right: 15px;
+}
+
+.member-name {
+  font-size: 16px;
+  color: #333;
+}
+
+#rejected-members-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+}
+
+.rejected-member-card {
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 10px 15px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.rejected-member-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+}
+
+.rejection-icon {
+  width: 15px;
+  height: 15px;
+  margin-right: 10px;
+  font-size: 0.8rem;
+}
+
+.thesis-work {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+#add-members-button {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 10px;
+  width: 120px;
+  background: #5a485e;
+  color: #fff;
+  border: none;
+  font-size: 0.8em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+p {
+  margin: 0;
+}
+
+#submit-exam-details {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 10px;
+  width: 80px;
+  background: #5a485e;
+  color: #fff;
+  border: none;
+  font-size: 0.8em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  nav {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  main {
+    padding: 1rem;
+  }
+}

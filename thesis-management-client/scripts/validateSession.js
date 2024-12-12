@@ -7,7 +7,7 @@
   }
 
   try {
-    const response = await fetch("http://localhost:5000/validateSession", {
+    const response = await fetch("http://localhost:5000/validate-session", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -15,7 +15,6 @@
       },
     });
 
-    debugger;
     if (!response.ok) {
       // Redirect if token is invalid
       window.location.href = "login.html";

@@ -144,3 +144,71 @@ FOREIGN KEY (thesis_id)
 REFERENCES theses (id)
 ON DELETE CASCADE;
 
+ALTER TABLE committees
+ADD COLUMN invite_status VARCHAR(50) CHECK (invite_status IN ('invited', 'accepted', 'rejected')) DEFAULT 'invited';
+
+ALTER TABLE committees
+ADD COLUMN invite_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE committees
+ADD COLUMN response_date TIMESTAMP;
+
+INSERT INTO theses (title, description, status)
+VALUES ('AI-Powered Personalized Learning Systems',
+        'This thesis explores the development of an AI-powered learning system that personalizes educational content based on a student''s unique learning style, pace, and performance.',
+        'under_assignment');
+
+       INSERT INTO theses (title, description, status)
+VALUES ('Blockchain for Secure Online Voting Systems',
+        'This thesis focuses on the design and development of a secure online voting system using blockchain technology to ensure transparency, security, and immutability of votes while maintaining voter anonymity.',
+        'under_assignment');
+
+
+       INSERT INTO theses (title, description, status)
+VALUES ('Predictive Maintenance System for Smart Factories',
+        'This thesis aims to create a predictive maintenance system that leverages IoT devices and machine learning models to predict equipment failures in a smart factory environment, reducing downtime and optimizing operational efficiency.',
+        'under_assignment');
+
+
+       INSERT INTO theses (title, description, status)
+VALUES ('Natural Language Processing (NLP) for Sentiment Analysis in Customer Reviews',
+        'This thesis investigates the application of NLP techniques for sentiment analysis in customer reviews, aiming to develop an automated system that classifies feedback as positive, negative, or neutral.',
+        'under_assignment');
+
+
+        INSERT INTO "thesis-management".users
+( "name", email, "role", password_hash, contact_details, created_at)
+VALUES
+( 'Alice Smith', 'alice.smith@student.com', 'student'::"thesis-management"."user_role",
+'$2b$10$D8p72hYh/E7RXvBqUBQnReM1zt5OZ5lY7k9MNO8JsyAlOumf2QCvK',
+'{"phone": "1122334455", "mobile": "987654321", "address": "456 Elm Street, 54321"}'::jsonb,
+'2024-11-28 16:20:54.327');
+
+INSERT INTO "thesis-management".users
+( "name", email, "role", password_hash, contact_details, created_at)
+VALUES
+( 'Bob Johnson', 'bob.johnson@student.com', 'student'::"thesis-management"."user_role",
+'$2b$10$HjE4xr8/hNsVC.WMk48UFeOES1G2z8pFq5.kX3nV2m30OvHK3BYCm',
+'{"phone": "2233445566", "mobile": "567891234", "address": "789 Maple Avenue, 67890"}'::jsonb,
+'2024-11-28 16:25:54.327');
+
+
+INSERT INTO "thesis-management".users
+( "name", email, "role", password_hash, contact_details, created_at)
+VALUES
+('Claire White', 'claire.white@student.com', 'student'::"thesis-management"."user_role",
+'$2b$10$9gkd1TYMT9bF5xx3P.k3/Uy8Pqyx1wQn0rOkOhnC2DLiyF1lID7Gy',
+'{"phone": "5566778899", "mobile": "678901234", "address": "987 Birch Lane, 11223"}'::jsonb,
+'2024-11-28 16:30:54.327');
+
+
+INSERT INTO "thesis-management".users
+( "name", email, "role", password_hash, contact_details, created_at)
+VALUES
+('David Brown', 'david.brown@student.com', 'student'::"thesis-management"."user_role",
+'$2b$10$1HLjEJXp1JbpY1i/z/k1rEf.6o6H7PzwpIGfJmDgVh.jlDMLq8XIG',
+'{"phone": "6655443322", "mobile": "765432109", "address": "321 Oak Drive, 33221"}'::jsonb,
+'2024-11-28 16:40:54.327');
+
+
+

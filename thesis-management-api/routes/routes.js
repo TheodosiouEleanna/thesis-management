@@ -1,21 +1,21 @@
-const loginRoutes = require("./loginRoutes");
-const validateSessionRoutes = require("./validateSessionRoutes");
-const userRoutes = require("./userRoutes");
-const thesesRoutes = require("./thesesRoutes");
-const announcementsRoutes = require("./announcementsRoutes");
-const committeesRoutes = require("./committeesRoutes");
-const gradesRoutes = require("./gradesRoutes");
-const progressRoutes = require("./progressRoutes");
-const thesisMaterialRoutes = require("./thesisMaterialRoutes");
+const loginRoutes = require("./login");
+const validateSessionRoutes = require("./validate-session");
+const userRoutes = require("./users");
+const thesesRoutes = require("./theses");
+const announcementsRoutes = require("./announcements");
+const committeesRoutes = require("./committees");
+const gradesRoutes = require("./grades");
+const progressRoutes = require("./progress");
+const thesisMaterialRoutes = require("./thesis-material");
 
 module.exports = {
   login: loginRoutes,
-  validateSession: validateSessionRoutes,
-  user: userRoutes,
+  ["validate-session"]: validateSessionRoutes,
+  users: userRoutes,
+  committees: committeesRoutes,
   theses: thesesRoutes,
   announcements: announcementsRoutes,
-  committees: committeesRoutes,
   grades: gradesRoutes,
   progress: progressRoutes,
-  thesisMaterial: thesisMaterialRoutes,
+  ["thesis-material"]: thesisMaterialRoutes,
 };
