@@ -1,4 +1,4 @@
-const announcementsRoutes = async (req, res, pathParts) => {
+const announcementsRoutes = async (req, res, pathParts, queryParams) => {
   const id = pathParts[2]; // Extract ID from URL (if present)
 
   if (req.method === "GET" && pathParts.length === 2) {

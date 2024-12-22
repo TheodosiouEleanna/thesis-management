@@ -4,19 +4,22 @@ body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(
     135deg,
-    #8e7cc3,
-    #aacfbf
+    #baafc9,
+    #a3cab9
   ); /* Muted purple to green gradient */
 }
 
 /* Header Styling */
 header {
+  position: sticky;
+  z-index: 1000;
+  background-color: #c3d8cf; /* Background color to avoid transparency */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #aacfbf; /* Soft purple */
   padding: 1rem 2rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  top: 0;
 }
 
 #logo-container {
@@ -71,7 +74,7 @@ h1 {
 }
 
 .menu-header:hover {
-  background-color: #8e7cc3;
+  background-color: #7e6296;
   /* Muted purple for hover */
 }
 
@@ -119,7 +122,7 @@ main {
 button {
   width: 100%;
   padding: 12px;
-  background: #5a485e;
+  background: #105e3c;
   color: #fff;
   border: none;
   font-size: 1em;
@@ -129,7 +132,7 @@ button {
 }
 
 button:hover {
-  background: #aacfbf; /* Muted green for hover */
+  background: #17704a; /* Muted green for hover */
   box-shadow: #8e7cc3; /* Green shadow */
 }
 
@@ -153,6 +156,7 @@ textarea {
   padding: 0.5rem;
   border: 1px solid #ccc;
   font-size: 0.8rem;
+  margin-left: 20px;
 }
 
 #save-profile-button {
@@ -161,7 +165,7 @@ textarea {
   right: 0;
   padding: 10px;
   width: 80px;
-  background: #5a485e;
+  background: #105e3c;
   color: #fff;
   border: none;
   font-size: 0.8em;
@@ -171,7 +175,7 @@ textarea {
 }
 
 button:hover {
-  background-color: #aacfbf;
+  background-color: #167c50;
 }
 
 h3 {
@@ -181,7 +185,7 @@ h3 {
 
 #logout-button {
   width: 60px;
-  background: #6c5b7b;
+  background: #105e3c;
   right: 0;
   bottom: 0px;
   padding: 0.5rem;
@@ -198,7 +202,6 @@ h3 {
   height: 150px;
   padding: 10px;
   font-size: 16px;
-  border-radius: 8px;
   border: 1px solid #cccccc;
   background-color: #f9f9f9;
   color: #333;
@@ -229,12 +232,10 @@ h3 {
 
 #committee-members::-webkit-scrollbar-thumb {
   background-color: #4caf50;
-  border-radius: 8px;
 }
 
 #committee-members::-webkit-scrollbar-track {
   background-color: #f1f1f1;
-  border-radius: 8px;
 }
 
 #invited-members-container {
@@ -243,7 +244,6 @@ h3 {
   gap: 10px;
   padding: 20px;
   background-color: #f9f9f9;
-  border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin: 0 auto;
 }
@@ -252,7 +252,6 @@ h3 {
   display: flex;
   align-items: center;
   background-color: #ffffff;
-  border-radius: 8px;
   padding: 10px 15px;
   border: 1px solid #e0e0e0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -321,7 +320,6 @@ h3 {
   right: 0;
   padding: 10px;
   width: 120px;
-  background: #5a485e;
   color: #fff;
   border: none;
   font-size: 0.8em;
@@ -364,4 +362,182 @@ p {
   main {
     padding: 1rem;
   }
+}
+
+ul {
+  position: relative;
+}
+h3 {
+  margin-bottom: 0;
+}
+.thesis-list-item {
+  padding-top: 10px;
+}
+
+/* Style the main thesis list */
+.thesis-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  padding-bottom: 70px;
+}
+
+.thesis-list-item {
+  background-color: #ffffff;
+  border: 1px solid #dddddd;
+  padding: 10px;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: box-shadow 0.3s ease-in-out;
+}
+
+#thesis-container {
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  background-color: #f9f9f9;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+}
+.thesis-list-item:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.thesis-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.thesis-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #333333;
+}
+
+.thesis-metadata {
+  font-size: 14px;
+  color: #555555;
+}
+
+.thesis-status {
+  color: #007bff;
+  font-weight: bold;
+}
+.status {
+  font-weight: 400;
+  color: #333;
+}
+
+.thesis-actions {
+  display: flex;
+  align-items: center;
+}
+
+.view-thesis {
+  padding: 8px;
+  width: auto;
+  color: white;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+#export-theses {
+  padding: 8px;
+  width: 100px;
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: block;
+  color: white;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.invitations-list {
+  display: flex;
+  align-items: center;
+}
+#invitation-container {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  width: 100%;
+  background-color: #f9f9f9;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.invitation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-right: 20px;
+  width: 90%;
+  list-style: none;
+  background-color: #ffffff;
+  border: 1px solid #dddddd;
+  padding: 10px;
+  transition: box-shadow 0.3s ease-in-out;
+}
+.invitation:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.accept-invitation {
+  padding: 8px;
+  width: auto;
+  margin-right: 20px;
+}
+.accept-invitation:hover {
+  background: #91c7b0;
+}
+.reject-invitation {
+  padding: 8px;
+  width: auto;
+  background: #641711;
+}
+
+.reject-invitation:hover {
+  background: #881f18;
+}
+
+.create-thesis-form {
+  position: relative;
+  padding-bottom: 60px;
+}
+#create-thesis-topic {
+  width: auto;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 8px;
+}
+
+label {
+  color: #105e3c;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+}
+.label {
+  color: #105e3c;
+  font-weight: bold;
+}
+
+.assign-topic-form {
+  position: relative;
+  padding-bottom: 60px;
+}
+
+.assign-topic {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: auto;
+  padding: 8px;
 }

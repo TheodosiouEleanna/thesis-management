@@ -2,7 +2,7 @@ const { dbQuery } = require("../db");
 const { sendResponse } = require("../utils");
 const { getRequestBody, getThesisDuration } = require("../utils");
 
-const committeesRoutes = async (req, res, pathParts) => {
+const committeesRoutes = async (req, res, pathParts, queryParams) => {
   const id = pathParts[1]; // Extract ID from URL (if present)
 
   if (req.method === "GET" && pathParts.length === 1) {
@@ -28,9 +28,15 @@ const committeesRoutes = async (req, res, pathParts) => {
         };
       })
     );
-  } else if (req.method === "GET" && id) {
+  } else if (
+    req.method === "GET" &&
+    pathParts.length === 3 &&
+    pathParts[2] === "invitations"
+  ) {
     // Get committee members by thesis ID
-    const query = "SELECT * FROM committees WHERE thesis_id = $1";
+    const query = `SELECT * FROM "thesis-management".committees
+    LEFT JOIN "thesis-management".theses ON committees.thesis_id = theses.id
+    WHERE member_id = $1 AND invite_status = 'invited';`;
     const result = await dbQuery(query, [id]);
     sendResponse(
       res,

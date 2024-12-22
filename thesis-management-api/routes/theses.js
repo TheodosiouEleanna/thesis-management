@@ -1,10 +1,15 @@
 const { dbQuery } = require("../db");
 const { sendResponse } = require("../utils");
-const { getRequestBody, getThesisDuration } = require("../utils");
+const {
+  getRequestBody,
+  getThesisDuration,
+  parseMultipartData,
+  handleFileUpload,
+} = require("../utils");
 const path = require("path");
 const fs = require("fs");
 
-const thesesRoutes = async (req, res, pathParts) => {
+const thesesRoutes = async (req, res, pathParts, queryParams) => {
   const thesis_id = pathParts[1]; // Extract ID from URL (if present)
 
   // Ensure 'uploads' directory exists
@@ -14,8 +19,18 @@ const thesesRoutes = async (req, res, pathParts) => {
   }
 
   if (req.method === "GET" && pathParts.length === 1) {
-    // Get all theses
-    const query = "SELECT * FROM theses";
+    // Get all theses of a supervisor
+    const supervisorId = queryParams.supervisor_id;
+    const query = `SELECT * FROM "thesis-management".theses WHERE supervisor_id = $1`;
+    const supervisor_thesis_result = await dbQuery(query, [supervisorId]);
+    sendResponse(res, 200, supervisor_thesis_result.rows);
+  } else if (
+    req.method === "GET" &&
+    pathParts.length === 2 &&
+    pathParts[1] === "available"
+  ) {
+    // Get all available theses
+    const query = `SELECT * FROM "thesis-management".theses WHERE supervisor_id IS NULL`;
     const result = await dbQuery(query);
     sendResponse(res, 200, result.rows);
   } else if (req.method === "GET" && pathParts.length === 2 && thesis_id) {
@@ -43,16 +58,58 @@ const thesesRoutes = async (req, res, pathParts) => {
     });
   } else if (req.method === "POST" && pathParts.length === 1) {
     // Add new thesis
-    const { title, description, student_id, supervisor_id, status } =
-      await getRequestBody(req);
-    const query = `INSERT INTO "thesis-management".theses (title, description, student_id, supervisor_id, status) VALUES ($1, $2, $3, $4, $5) RETURNING *`;
+    const contentType = req.headers["content-type"];
+    if (!contentType || !contentType.includes("multipart/form-data")) {
+      return sendResponse(res, 400, {
+        error: "Invalid Content-Type. Expected multipart/form-data",
+      });
+    }
+
+    // Extract the boundary from Content-Type header
+    const boundary = contentType.split("boundary=")[1];
+    if (!boundary) {
+      return sendResponse(res, 400, {
+        error: "Boundary not found in Content-Type",
+      });
+    }
+
+    const parsedData = await parseMultipartData(req, boundary);
+    const { fields, files } = parsedData;
+    const { title, description } = fields;
+
+    if (!files[0]) {
+      return sendResponse(res, 400, {
+        error: "No file provided for 'detailedFile'",
+      });
+    }
+
+    const file = files[0];
+    const filePath = handleFileUpload(
+      file.content,
+      `${Date.now()}-${file.filename}`
+    );
+
+    const supervisor_id = queryParams.supervisor_id;
+    const query = `
+    INSERT INTO "thesis-management".theses (title, description, student_id, status)
+    VALUES ($1, $2, $3, $4)
+    RETURNING *`;
     const result = await dbQuery(query, [
       title,
       description,
-      student_id,
-      supervisor_id,
-      status,
+      null,
+      "under_assignment",
     ]);
+
+    const thesisId = result.rows[0].id;
+
+    // Update the record with the file path
+    const updateQuery = `
+    UPDATE "thesis-management".theses
+    SET detailed_file = $1
+    WHERE id = $2`;
+    await dbQuery(updateQuery, [filePath, thesisId]);
+
     sendResponse(res, 201, result.rows[0]);
   } else if (req.method === "PUT" && thesis_id && pathParts.length === 2) {
     // Update thesis details
@@ -91,11 +148,7 @@ const thesesRoutes = async (req, res, pathParts) => {
     WHERE c.thesis_id = $1 AND c.invite_status = 'invited';`;
     const result = await dbQuery(query, [thesis_id]);
     console.log({ result });
-    sendResponse(
-      res,
-      result.rows.length ? 200 : 404,
-      result.rows || { error: "No invited committee members found" }
-    );
+    sendResponse(res, 200, result.rows);
   } else if (
     req.method === "GET" &&
     pathParts.length === 3 &&

@@ -9,9 +9,9 @@ require("dotenv").config(); // Load .env variables
 const PORT = process.env.APP_PORT || 5000;
 const logger = require("./logger");
 const protectedRoutes = require("./routes/routes");
+const url = require("url"); // Import the url module
 
 const server = http.createServer((req, res) => {
-  const url = req.url;
   const method = req.method;
   // Add CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -26,7 +26,10 @@ const server = http.createServer((req, res) => {
     res.writeHead(204);
     return res.end();
   }
-  const pathParts = req.url.split("/").filter(Boolean);
+  // Parse the URL, including query parameters
+  const parsedUrl = url.parse(req.url, true); // `true` parses query parameters as an object
+  const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+  const queryParams = parsedUrl.query; // Extract the query parameters as an object
 
   // Route to login directly if it's the login endpoint
   if (pathParts[0] === "login") {
@@ -34,9 +37,9 @@ const server = http.createServer((req, res) => {
   }
 
   // Apply authentication middleware for all protected routes
-  if (url.startsWith(`/${pathParts[0]}`)) {
+  if (parsedUrl.pathname.startsWith(`/${pathParts[0]}`)) {
     return authenticate(req, res, () => {
-      routeHandler(req, res, pathParts);
+      routeHandler(req, res, pathParts, queryParams);
     });
   }
 
@@ -44,10 +47,10 @@ const server = http.createServer((req, res) => {
 });
 
 // Centralized route handler
-const routeHandler = (req, res, pathParts) => {
+const routeHandler = (req, res, pathParts, queryParams) => {
   const route = protectedRoutes[pathParts[0]]; // Dynamically match route
   if (route) {
-    return logger(req, res, route(req, res, pathParts));
+    return logger(req, res, route(req, res, pathParts, queryParams));
   }
   sendResponse(res, 404, { error: "Route not found" });
 };

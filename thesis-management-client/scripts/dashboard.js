@@ -29,12 +29,12 @@ const student_sections = [
       // );
       return `
         <h3>Thesis Details</h3>
-        <p><u>Topic:</u> <strong>${data.title}</strong></p>
-        <p><u>Description:</u> ${data.description}</p>
-        <p><u>Attachment:</u> <a href="${data.detailed_file}" target="_blank">Download Description File</a></p>
-        <p><u>Status:</u> <strong>${data.status}</strong></p>
-        <p><u>Three-Member Committee:</u> <strong>${data.committees[0].name}</strong>, ${data.committees[1].name}, ${data.committees[2].name}</p>
-        <p><u>Time Elapsed:</u> <strong>${data.time_elapsed}</strong></p>
+        <p><span class="label">Topic:</span> <strong>${data.title}</strong></p>
+        <p><span class="label">Description:</span> ${data.description}</p>
+        <p><span class="label">Attachment:</span> <a href="${data.detailed_file}" target="_blank">Download Description File</a></p>
+        <p><span class="label">Status:</span> <strong>${data.status}</strong></p>
+        <p><span class="label">Three-Member Committee:</span> <strong>${data.committees[0].name}</strong>, ${data.committees[1].name}, ${data.committees[2].name}</p>
+        <p><span class="label">Time Elapsed:</span> <strong>${data.time_elapsed}</strong></p>
       `;
     },
   },
@@ -53,17 +53,21 @@ const student_sections = [
       return `
         <h3>Edit Contact Information</h3>
         <form id="edit-profile-form">
-          <label for="address">Full Postal Address:</label>
+          <label for="address">Full Postal Address:
           <input type="text" id="address" value="${data.contact_details.address}" />
+          </label>
 
-          <label for="email">Contact Email:</label>
+          <label for="email">Contact Email:
           <input type="email" id="email" value="${data.email}" />
+          </label>
 
-          <label for="mobile">Mobile Phone:</label>
+          <label for="mobile">Mobile Phone:
           <input type="text" id="mobile" value="${data.contact_details.mobile}" />
+          </label>
 
-          <label for="landline">Landline Phone:</label>
+          <label for="landline">Landline Phone:
           <input type="text" id="landline" value="${data.contact_details.phone}" />
+          </label>
 
           <button type="submit" id="save-profile-button">Save</button>
         </form>
@@ -138,7 +142,7 @@ const student_sections = [
         const members_rejected = await rejected_members_response.json();
 
         return `<div class="thesis-work">
-          <h4>Your Thesis is: Under Assignment</h4>
+          <h4 class="label">Your Thesis is: Under Assignment</h4>
           <form id="manage-thesis">
           <p>Select members for the Three-Member Committee:</p>
           <select id="committee-members" multiple>
@@ -249,30 +253,206 @@ const student_sections = [
 ];
 
 const instructor_sections = [
-  title: "View and Create Thesis Topics",
-  fetchData: async () => {
+  {
+    title: "View and Create Thesis Topics",
+    fetchData: async () => {
+      const response = await fetch(`http://localhost:5000/theses`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+        },
+      });
+      // if (!response.ok) throw new Error("Failed to fetch thesis topics");
+      // const theses = await response.json() ;
+      const theses = [];
 
+      return `
+        <h3>Thesis Topics</h3>
+        <form id="create-thesis-form">
+          <label for="title">Title:
+          <input type="text" id="title" placeholder="Enter thesis title" required />
+          </label>
+
+          <label for="description">Short Description:
+          <textarea id="description" placeholder="Enter a short description"></textarea>
+          </label>
+
+          <label for="detailed-file">Attach Detailed File (PDF):
+          <input type="file" id="detailed-file" accept="application/pdf" />
+          </label>
+
+          <button id="create-thesis-topic" type="submit">Create Thesis Topic</button>
+        </form>
+        <h4>Your Topics:</h4>
+        <ul>
+          ${theses
+            .map(
+              (thesis) => `
+              <li>
+                <strong>${thesis.title}</strong> - ${thesis.description}
+                <button data-id="${thesis.id}" class="edit-thesis">Edit</button>
+              </li>
+            `
+            )
+            .join("")}
+        </ul>
+      `;
+    },
   },
-  title: "Initial Assignment of a Topic to a Student",
-  fetchData: async () => {
+  {
+    title: "Initial Assignment of a Topic to a Student",
+    fetchData: async () => {
+      const thesis_topics = await fetch(
+        `http://localhost:5000/theses/available`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        }
+      );
 
+      if (!thesis_topics.ok) throw new Error("Failed to fetch thesis topics");
+
+      const topics = await thesis_topics.json();
+
+      const topicOptions = topics
+        .map((topic) => `<option value="${topic.id}">${topic.title}</option>`)
+        .join("");
+
+      return `
+        <h3>Assign Topic to a Student</h3>
+        <form id="assign-topic-form">
+          <label for="student-id">Student ID:
+          <input type="text" id="student-id" placeholder="Enter student ID" required />
+          </label>
+
+          <label for="topic-id">Select Topic:
+          <select id="topic-id" placeholder="Select a topic" required>
+          ${topicOptions}
+          </select>
+          </label>
+
+          <button class="assign-topic" type="submit">Assign Topic</button>
+        </form>
+      `;
+    },
   },
-  title: "View List of Theses",
-  fetchData: async () => {
+  {
+    title: "View List of Theses",
+    fetchData: async () => {
+      const response = await fetch(
+        `http://localhost:5000/theses?supervisor_id=${user.id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to fetch list of theses");
+      const theses = await response.json();
 
+      return `
+        <ul class="thesis-list">
+            ${theses
+              .map(
+                (thesis) => `
+                <div id="thesis-container">
+                  <li class="thesis-list-item">
+                    <div class="thesis-content">
+                    <div class="thesis-title">${thesis.title}</div>
+                    <div class="thesis-metadata">
+                    <span class="thesis-status">status: <span class="status">${thesis.status}</span></span>
+                    </div>
+                    </div>
+                    <div class="thesis-actions">
+                    <button data-id="${thesis.id}" class="view-thesis">View Details</button>
+                    </div>
+                  </li>
+                </div>
+              `
+              )
+              .join("")}
+              <button id="export-theses">Export List</button>
+          </ul>
+
+      `;
+    },
   },
-  title: "View and Create Thesis Topics",
-  fetchData: async () => {
+  {
+    title: "View Invitations to Participate in Three-Member Committees",
+    fetchData: async () => {
+      const response = await fetch(
+        `http://localhost:5000/committees/${user.id}/invitations`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to fetch invitations");
+      const invitations = await response.json();
 
+      return `
+        <h3>Committee Invitations</h3>
+        <ul class="invitations-list">
+          ${invitations
+            .map(
+              (invitation) => `
+              <div id="invitation-container">
+              <li class="invitation">
+              <div>
+              <strong>${invitation.title}</strong> - ${invitation.status}
+              </div>
+              <div>
+              <button data-id="${invitation.id}" class="accept-invitation">Accept</button>
+              <button data-id="${invitation.id}" class="reject-invitation">Reject</button>
+              </div>
+              </li>
+              </div>
+            `
+            )
+            .join("")}
+        </ul>
+      `;
+    },
   },
-  title: "View and Create Thesis Topics",
-  fetchData: async () => {
+  {
+    title: "View Statistics",
+    fetchData: async () => {
+      const response = await fetch(
+        `http://localhost:5000/instructor/statistics`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to fetch statistics");
+      const stats = await response.json();
 
+      return `
+        <h3>Statistics</h3>
+        <p>Average Completion Time (Supervised): ${stats.avg_completion_time.supervised}</p>
+        <p>Average Completion Time (Committee Member): ${stats.avg_completion_time.committee}</p>
+        <p>Average Grade (Supervised): ${stats.avg_grade.supervised}</p>
+        <p>Average Grade (Committee Member): ${stats.avg_grade.committee}</p>
+        <p>Total Theses (Supervised): ${stats.total_theses.supervised}</p>
+        <p>Total Theses (Committee Member): ${stats.total_theses.committee}</p>
+      `;
+    },
   },
-]
+];
 
-if (role === "student") {
-  // Dynamically construct sections with fetch-on-expand behavior
+if (userRole === "student") {
   student_sections.forEach(({ title, fetchData }) => {
     const section = document.createElement("div");
     section.classList.add("menu-section");
@@ -309,12 +489,52 @@ if (role === "student") {
     section.appendChild(body);
     menuContainer.appendChild(section);
   });
+}
 
-  menuContainer.addEventListener("submit", async (event) => {
-    event.preventDefault(); // 🚀 Prevent the default form submission behavior
+if (userRole === "instructor") {
+  instructor_sections.forEach(({ title, fetchData }) => {
+    const section = document.createElement("div");
+    section.classList.add("menu-section");
 
-    console.log(`Form ID: ${event.target.id}`); // Debug log to ensure the form is correctly identified
+    const header = document.createElement("div");
+    header.classList.add("menu-header");
+    header.innerHTML = `
+      <span>${title}</span>
+      <span class="icon">&#10095;</span>
+    `;
 
+    const body = document.createElement("div");
+    body.classList.add("menu-body", "collapsed");
+
+    header.onclick = async () => {
+      const isCollapsed = body.classList.toggle("collapsed");
+      header.querySelector(".icon").classList.toggle("expanded", !isCollapsed);
+
+      if (!isCollapsed && !body.dataset.loaded) {
+        try {
+          body.innerHTML = "<p>Loading...</p>";
+          const content = await fetchData();
+          body.innerHTML = content;
+          body.dataset.loaded = "true";
+        } catch (error) {
+          console.error(`Error loading ${title} data:`, error);
+          body.innerHTML = `<p>${error.message}</p>`;
+        }
+      }
+    };
+
+    section.appendChild(header);
+    section.appendChild(body);
+    menuContainer.appendChild(section);
+  });
+}
+
+menuContainer.addEventListener("submit", async (event) => {
+  event.preventDefault(); // 🚀 Prevent the default form submission behavior
+
+  console.log(`Form ID: ${event.target.id}`); // Debug log to ensure the form is correctly identified
+
+  if (userRole === "student") {
     if (event.target && event.target.id === "edit-profile-form") {
       const form = event.target;
       const payload = {
@@ -463,6 +683,7 @@ if (role === "student") {
           {
             method: "POST",
             headers: {
+              "Content-Type": "multipart/form-data",
               Authorization: `Bearer ${localStorage.getItem("authToken")}`,
             },
             body: formData,
@@ -489,8 +710,53 @@ if (role === "student") {
         alert("An error occurred. Please try again.");
       }
     }
-  });
-}
-if (role === "instructor") {
+  }
 
-}
+  if (userRole === "instructor") {
+    event.preventDefault(); // Prevent the default form submission behavior
+    if (event.target && event.target.id === "create-thesis-form") {
+      const form = event.target;
+      const title = document.getElementById("title").value;
+      const description = document.getElementById("description").value;
+      const detailedFile = document.getElementById("detailed-file").files[0];
+
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("detailed_file", detailedFile);
+
+      try {
+        const response = await fetch(
+          `http://localhost:5000/theses?supervisor_id=${user.id}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            },
+            body: formData,
+          }
+        );
+
+        if (!response.ok) throw new Error("Failed to create thesis topic");
+
+        let infoDiv = document.getElementById("infoContainer");
+        if (!infoDiv) {
+          infoDiv = document.createElement("div");
+          infoDiv.id = "infoContainer";
+          infoDiv.style.color = "green";
+          infoDiv.style.marginTop = "10px";
+          form.appendChild(infoDiv);
+        }
+        infoDiv.textContent = "Thesis topic created successfully!";
+        setTimeout(() => {
+          infoDiv.style.display = "none";
+        }, 4000);
+
+        const newThesis = await response.json();
+      } catch (error) {
+        console.error("Error creating thesis topic:", error);
+        alert("An error occurred. Please try again.");
+      }
+    }
+  }
+});

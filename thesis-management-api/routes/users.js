@@ -2,7 +2,7 @@ const { dbQuery } = require("../db");
 const { sendResponse } = require("../utils");
 const { getRequestBody } = require("../utils");
 
-const usersRoutes = async (req, res, pathParts) => {
+const usersRoutes = async (req, res, pathParts, queryParams) => {
   const id = pathParts[1]; // Extract ID from URL (if present)
 
   if (req.method === "GET" && pathParts.length === 1) {
