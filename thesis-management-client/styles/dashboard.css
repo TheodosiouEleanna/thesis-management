@@ -157,6 +157,7 @@ textarea {
   border: 1px solid #ccc;
   font-size: 0.8rem;
   margin-left: 20px;
+  height: auto;
 }
 
 #save-profile-button {
@@ -282,7 +283,6 @@ h3 {
   background-color: #f9f9f9;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin: 0 auto;
 }
 
 .rejected-member-card {
@@ -399,7 +399,8 @@ h3 {
   padding: 5px;
   background-color: #f9f9f9;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin: 0 auto;
+  margin-bottom: 5px;
+  width: 100%;
 }
 .thesis-list-item:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -506,9 +507,10 @@ h3 {
   background: #881f18;
 }
 
-.create-thesis-form {
+#create-thesis-form {
   position: relative;
   padding-bottom: 60px;
+  margin-left: 30px;
 }
 #create-thesis-topic {
   width: auto;
@@ -540,4 +542,63 @@ label {
   right: 0;
   width: auto;
   padding: 8px;
+}
+.unassigned-theses-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0;
+}
+
+.unassigned-thesis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 5px;
+}
+
+.unassigned-thesis-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.edit-thesis {
+  width: auto;
+  padding: 8px;
+  margin-left: 25px;
+  margin-right: 25px;
+}
+
+h4,
+h5 {
+  color: #6c5b7b;
+  margin-bottom: 0.2rem;
+  margin-top: 0.2rem;
+}
+
+.edit-topic-header {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.edit-thesis-form {
+  margin-left: 30px;
+}
+
+.update-thesis-topic {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  padding: 6px;
+  font-size: small;
+  width: auto;
+}
+
+.thesis-form-container {
+  width: 100%;
+}
+.edit-detailed-file {
+  margin-left: 20px;
 }

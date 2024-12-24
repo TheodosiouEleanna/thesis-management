@@ -1,3 +1,5 @@
+import { showInfoMessage } from "../utils.js";
+
 const menuContainer = document.getElementById("role-specific-menu");
 const user = JSON.parse(localStorage.getItem("user"));
 const userRole = user.role;
@@ -256,47 +258,93 @@ const instructor_sections = [
   {
     title: "View and Create Thesis Topics",
     fetchData: async () => {
-      const response = await fetch(`http://localhost:5000/theses`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        },
-      });
-      // if (!response.ok) throw new Error("Failed to fetch thesis topics");
-      // const theses = await response.json() ;
-      const theses = [];
+      const unassigned_response = await fetch(
+        `http://localhost:5000/theses/unassigned?supervisor_id=${user.id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        }
+      );
+
+      if (!unassigned_response.ok)
+        throw new Error("Failed to fetch unassigned theses");
+
+      debugger;
+      const unassignedTheses = await unassigned_response.json();
 
       return `
         <h3>Thesis Topics</h3>
-        <form id="create-thesis-form">
-          <label for="title">Title:
-          <input type="text" id="title" placeholder="Enter thesis title" required />
-          </label>
+          <form id="create-thesis-form">
+            <label for="title">Title:
+              <input type="text" id="title" placeholder="Enter thesis title" required />
+            </label>
+            <label for="description">Short Description:
+              <textarea id="description" placeholder="Enter a short description"></textarea>
+            </label>
+            <label for="detailed-file">Attach Detailed File (PDF):
+              <input type="file" id="detailed-file" accept="application/pdf" />
 
-          <label for="description">Short Description:
-          <textarea id="description" placeholder="Enter a short description"></textarea>
-          </label>
+            </label>
+            <button id="create-thesis-topic" type="submit">Create Thesis Topic</button>
+          </form>
 
-          <label for="detailed-file">Attach Detailed File (PDF):
-          <input type="file" id="detailed-file" accept="application/pdf" />
-          </label>
+          <h4>Your Topics:</h4>
+          <ul class="unassigned-theses-list">
+            ${unassignedTheses
+              .map(
+                (thesis) => `
+                  <li class="unassigned-thesis" id="thesis-${thesis.id}">
+                <div id="thesis-container">
 
-          <button id="create-thesis-topic" type="submit">Create Thesis Topic</button>
-        </form>
-        <h4>Your Topics:</h4>
-        <ul>
-          ${theses
-            .map(
-              (thesis) => `
-              <li>
+                <div class="unassigned-thesis-content">
+                <div>
                 <strong>${thesis.title}</strong> - ${thesis.description}
+                </div>
                 <button data-id="${thesis.id}" class="edit-thesis">Edit</button>
-              </li>
-            `
-            )
-            .join("")}
-        </ul>
+                </div>
+                </div>
+                  <!-- Initially hide the edit form -->
+                  <div class="thesis-form-container" id="edit-thesis-form-container-${
+                    thesis.id
+                  }" style="display:none;">
+                  <h4 class="edit-topic-header">Edit Thesis Topic</h4>
+                  <form class="edit-thesis-form" id="edit-thesis-form-${
+                    thesis.id
+                  }">
+                  <label for="edit-title">Title:
+                  <input type="text" class="edit-title" id="edit-title-${
+                    thesis.id
+                  }" required />
+                  </label>
+                  <label for="edit-description">Short Description:
+                  <textarea rows="4" class="edit-description" id="edit-description-${
+                    thesis.id
+                  }"></textarea>
+                  </label>
+                  <label for="edit-detailed-file">Attach Detailed File (PDF):
+                   <input type="file" class="edit-detailed-file" id="edit-detailed-file-${
+                     thesis.id
+                   }" accept="application/pdf">
+                  </label>
+                  <label for="href">Detailed File:  &nbsp; &nbsp;
+                  <a href="${thesis.detailed_file}" download>${
+                  thesis.detailed_file
+                    ? `${thesis.detailed_file.split("\\").pop()}`
+                    : ""
+                }</a>
+                </label>
+                  <button class="update-thesis-topic" id="update-thesis-topic-${
+                    thesis.id
+                  }" type="submit">Update Thesis Topic</button>
+                  </form>
+                  </div>
+                  </li>
+                `
+              )
+              .join("")}
+              </ul>
       `;
     },
   },
@@ -527,6 +575,50 @@ if (userRole === "instructor") {
     section.appendChild(body);
     menuContainer.appendChild(section);
   });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    // Attach event listener to a parent container that exists on page load
+    const parentContainer = document.body; // or a specific parent container like document.getElementById('thesis-container')
+
+    parentContainer.addEventListener("click", async (event) => {
+      // Check if the clicked element has the 'edit-thesis' class
+      if (event.target.classList.contains("edit-thesis")) {
+        const thesisId = event.target.dataset.id;
+        console.log("Click", thesisId);
+
+        // Fetch the specific thesis details for editing
+        const thesis_response = await fetch(
+          `http://localhost:5000/theses/${thesisId}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            },
+          }
+        );
+
+        if (!thesis_response.ok) {
+          console.error("Failed to fetch thesis details");
+          return;
+        }
+
+        const thesisData = await thesis_response.json();
+
+        // Populate the edit form with thesis data
+        document.getElementById(`edit-title-${thesisId}`).value =
+          thesisData.title;
+        document.getElementById(`edit-description-${thesisId}`).value =
+          thesisData.description;
+
+        // Toggle visibility of the edit form under the clicked thesis item
+        const formContainer = document.getElementById(
+          `edit-thesis-form-container-${thesisId}`
+        );
+        formContainer.style.display =
+          formContainer.style.display === "none" ? "block" : "none";
+      }
+    });
+  });
 }
 
 menuContainer.addEventListener("submit", async (event) => {
@@ -745,7 +837,8 @@ menuContainer.addEventListener("submit", async (event) => {
           infoDiv.id = "infoContainer";
           infoDiv.style.color = "green";
           infoDiv.style.marginTop = "10px";
-          form.appendChild(infoDiv);
+          const submitButton = document.getElementById("create-thesis-topic");
+          form.insertBefore(infoDiv, submitButton);
         }
         infoDiv.textContent = "Thesis topic created successfully!";
         setTimeout(() => {
@@ -753,10 +846,63 @@ menuContainer.addEventListener("submit", async (event) => {
         }, 4000);
 
         const newThesis = await response.json();
+
+        const unassigned_response = fetch(
+          `http://localhost:5000/theses/unassigned?supervisor_id=${user.id}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            },
+          }
+        );
+
+        if (!unassigned_response.ok)
+          throw new Error("Failed to fetch unassigned theses");
+
+        const unassignedTheses = unassigned_response.json();
       } catch (error) {
         console.error("Error creating thesis topic:", error);
         alert("An error occurred. Please try again.");
       }
+    }
+
+    debugger;
+    if (event.target && event.target.id.startsWith("edit-thesis-form")) {
+      const form = event.target;
+      const title = document.querySelector(".edit-title").value;
+      const description = document.querySelector(".edit-description").value;
+      const detailedFile = document.querySelector(".edit-detailed-file")
+        .files[0];
+
+      const thesis_id = event.target.id.split("-").pop();
+
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("detailed_file", detailedFile);
+
+      try {
+        const response = await fetch(
+          `http://localhost:5000/theses/${thesis_id}?supervisor_id=${user.id}`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            },
+            body: formData,
+          }
+        );
+
+        if (!response.ok) throw new Error("Failed to create thesis topic");
+
+        showInfoMessage(
+          "Thesis topic updated successfully!",
+          `#update-thesis-topic-${thesis_id}`
+        );
+
+        const newThesis = await response.json();
+      } catch (error) {}
     }
   }
 });

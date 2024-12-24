@@ -30,12 +30,21 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
     pathParts[1] === "available"
   ) {
     // Get all available theses
-    const query = `SELECT * FROM "thesis-management".theses WHERE supervisor_id IS NULL`;
+    const query = `SELECT * FROM "thesis-management".theses WHERE student_id IS NULL`;
+    const result = await dbQuery(query);
+    sendResponse(res, 200, result.rows);
+  } else if (
+    req.method === "GET" &&
+    pathParts.length === 2 &&
+    pathParts[1] === "unassigned"
+  ) {
+    // Get all available theses
+    const query = `SELECT * FROM "thesis-management".theses WHERE supervisor_id = ${queryParams.supervisor_id} AND student_id IS NULL`;
     const result = await dbQuery(query);
     sendResponse(res, 200, result.rows);
   } else if (req.method === "GET" && pathParts.length === 2 && thesis_id) {
     // Get thesis by ID
-    const query = `SELECT * FROM "thesis-management".theses WHERE student_id = $1`;
+    const query = `SELECT * FROM "thesis-management".theses WHERE id = $1`;
     const thesis_result = await dbQuery(query, [thesis_id]);
 
     const committees_result = await dbQuery(
@@ -55,6 +64,7 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
       status: thesis_result.rows[0].status,
       committees: committees_result.rows,
       time_elapsed: getThesisDuration(thesis_result.rows[0].started_at),
+      detailed_file: thesis_result.rows[0].detailed_file,
     });
   } else if (req.method === "POST" && pathParts.length === 1) {
     // Add new thesis
@@ -91,13 +101,14 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
 
     const supervisor_id = queryParams.supervisor_id;
     const query = `
-    INSERT INTO "thesis-management".theses (title, description, student_id, status)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO "thesis-management".theses (title, description, student_id, supervisor_id, status)
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING *`;
     const result = await dbQuery(query, [
       title,
       description,
       null,
+      supervisor_id,
       "under_assignment",
     ]);
 
@@ -111,6 +122,73 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
     await dbQuery(updateQuery, [filePath, thesisId]);
 
     sendResponse(res, 201, result.rows[0]);
+  } else if (
+    req.method === "PUT" &&
+    pathParts.length === 2 &&
+    thesis_id &&
+    req.headers["content-type"].includes("multipart/form-data")
+  ) {
+    // Update thesis
+    const contentType = req.headers["content-type"];
+    if (!contentType || !contentType.includes("multipart/form-data")) {
+      return sendResponse(res, 400, {
+        error: "Invalid Content-Type. Expected multipart/form-data",
+      });
+    }
+
+    // Extract the boundary from Content-Type header
+    const boundary = contentType.split("boundary=")[1];
+    if (!boundary) {
+      return sendResponse(res, 400, {
+        error: "Boundary not found in Content-Type",
+      });
+    }
+
+    const parsedData = await parseMultipartData(req, boundary);
+    const { fields, files } = parsedData;
+    const { title, description } = fields;
+
+    let filePath = null;
+
+    if (files[0]) {
+      file = files[0];
+      filePath = handleFileUpload(
+        file.content,
+        `${Date.now()}-${file.filename}`
+      );
+    }
+
+    let result;
+    if (!filePath) {
+      const query = `
+      UPDATE "thesis-management".theses
+      SET title = $1, description = $2
+      WHERE id = $3
+      RETURNING *`;
+
+      // Execute the update query
+      result = await dbQuery(query, [
+        title, // Title
+        description, // Description
+        thesis_id, // Thesis ID (where to update)
+      ]);
+    } else {
+      const query = `
+        UPDATE "thesis-management".theses
+        SET title = $1, description = $2, detailed_file = $3
+        WHERE id = $4
+        RETURNING *`;
+
+      // Execute the update query
+      result = await dbQuery(query, [
+        title, // Title
+        description, // Description
+        filePath, // File path (if provided)
+        thesis_id, // Thesis ID (where to update)
+      ]);
+    }
+
+    sendResponse(res, 200, result.rows[0]);
   } else if (req.method === "PUT" && thesis_id && pathParts.length === 2) {
     // Update thesis details
     const { title, description, status } = await getRequestBody(req);
@@ -234,7 +312,6 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
         `[${new Date().toISOString()}] File upload complete: ${filePath}`
       );
 
-      // Use sendResponse() instead of res.writeHead() and res.end()
       sendResponse(res, 200, {
         message: "File uploaded successfully",
         filePath: `/uploads/${uniqueFileName}`,
@@ -245,7 +322,6 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
       console.error("Error while uploading file:", err);
       fileStream.destroy();
 
-      // Use sendResponse() for error responses
       sendResponse(res, 500, { error: "Internal Server Error" });
     });
   } else if (
