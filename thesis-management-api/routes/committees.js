@@ -38,11 +38,7 @@ const committeesRoutes = async (req, res, pathParts, queryParams) => {
     LEFT JOIN "thesis-management".theses ON committees.thesis_id = theses.id
     WHERE member_id = $1 AND invite_status = 'invited';`;
     const result = await dbQuery(query, [id]);
-    sendResponse(
-      res,
-      result.rows.length ? 200 : 404,
-      result.rows || { error: "No committee members found" }
-    );
+    sendResponse(res, 200, result.rows);
   } else if (req.method === "POST") {
     // Add new committee member
     const request_body = await getRequestBody(req);
@@ -61,6 +57,36 @@ const committeesRoutes = async (req, res, pathParts, queryParams) => {
     }
 
     sendResponse(res, 201, result.rows);
+  } else if (
+    req.method === "PATCH" &&
+    id &&
+    pathParts.length === 3 &&
+    pathParts[2] === "accept"
+  ) {
+    // Update committee member invite status
+    const { thesis_id } = await getRequestBody(req);
+    const query = `UPDATE "thesis-management".committees SET invite_status = $1 WHERE thesis_id = $2 AND member_id = $3 RETURNING *`;
+    const result = await dbQuery(query, ["accepted", thesis_id, id]);
+    sendResponse(
+      res,
+      result.rows.length ? 200 : 404,
+      result.rows[0] || { error: "Committee member not found" }
+    );
+  } else if (
+    req.method === "PATCH" &&
+    id &&
+    pathParts.length === 3 &&
+    pathParts[2] === "reject"
+  ) {
+    // Update committee member invite status
+    const { thesis_id } = await getRequestBody(req);
+    const query = `UPDATE "thesis-management".committees SET invite_status = $1 WHERE thesis_id = $2 AND member_id = $3 RETURNING *`;
+    const result = await dbQuery(query, ["rejected", thesis_id, id]);
+    sendResponse(
+      res,
+      result.rows.length ? 200 : 404,
+      result.rows[0] || { error: "Committee member not found" }
+    );
   } else if (req.method === "PUT" && id) {
     // Update committee member role
     const { role } = await getRequestBody(req);

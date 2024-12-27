@@ -1,24 +1,17 @@
-const showInfoMessage = (messageText, buttonClass, error) => {
-  // Find or create the info container div
-  let infoDiv = document.getElementById("infoContainer");
+function displayInfoMessage(message, form, color) {
+  let infoDiv = form.querySelector("#infoContainer");
   if (!infoDiv) {
     infoDiv = document.createElement("div");
     infoDiv.id = "infoContainer";
-    infoDiv.style.color = error ? "red" : "green";
+    infoDiv.style.color = color;
     infoDiv.style.marginTop = "10px";
-
-    // Find the submit button and insert the info div before it
-    const submitButton = document.querySelector(buttonClass);
-    if (submitButton) {
-      submitButton.insertAdjacentElement("beforebegin", infoDiv);
-    }
-
-    infoDiv.textContent = messageText;
-    setTimeout(() => {
-      infoDiv.style.display = "none";
-    }, 4000);
+    form.appendChild(infoDiv);
   }
-};
+  infoDiv.textContent = message;
+  setTimeout(() => {
+    infoDiv.remove();
+  }, 4000);
+}
 
 const getRole = (thesis, user) => {
   if (thesis.supervisor_id === user.id) return "supervisor";
@@ -185,7 +178,7 @@ async function renderStatistics() {
 }
 
 export {
-  showInfoMessage,
+  displayInfoMessage,
   getRole,
   filterTheses,
   exportCSV,

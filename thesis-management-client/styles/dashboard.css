@@ -448,6 +448,7 @@ h3 {
 .thesis-actions {
   display: flex;
   align-items: center;
+  gap: 20px;
 }
 
 .view-thesis {
@@ -491,6 +492,7 @@ h3 {
 .invitations-list {
   display: flex;
   align-items: center;
+  flex-direction: column;
 }
 #invitation-container {
   display: flex;
@@ -676,4 +678,138 @@ p {
   flex-direction: column;
   align-items: center;
   width: 80%;
+}
+
+.members-info {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.members-info ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.members-info li {
+  margin-bottom: 15px;
+}
+
+.members-info li strong {
+  color: #333;
+}
+
+.cancel-assignment:hover {
+  background-color: #ff4444;
+}
+
+.members-info {
+  margin-left: 20px;
+}
+
+.thesis-info-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.view-invited-members {
+  padding: 4px;
+  font-size: 14px;
+  width: 200px;
+  transition: background-color 0.3s;
+}
+
+.cancel-assignment {
+  padding: 4px;
+  font-size: 14px;
+  background-color: #ff5555;
+  color: white;
+  border: none;
+  cursor: pointer;
+  width: 200px;
+  transition: background-color 0.3s;
+}
+
+.generate-presentation-announcement {
+  width: 280px;
+  font-size: 14px;
+  padding: 4px;
+  transition: background-color 0.3s;
+}
+.view-thesis-draft {
+  padding: 4px;
+  font-size: 14px;
+  width: 140px;
+  transition: background-color 0.3s;
+}
+.record-grade {
+  padding: 4px;
+  font-size: 14px;
+  width: 150px;
+  transition: background-color 0.3s;
+}
+.invited-members-list {
+  display: flex;
+  gap: 10px;
+  margin: 20px;
+}
+
+.change-status-to-under-examination {
+  padding: 4px;
+  width: 270px;
+  font-size: 14px;
+}
+.record-note {
+  padding: 4px;
+  width: 100px;
+  transition: background-color 0.3s;
+  font-size: 14px;
+}
+
+.note-section {
+  margin: 30px;
+  display: flex;
+  flex-direction: column;
+}
+.add-note {
+  width: 100px;
+  font-size: 14px;
+  padding: 4px;
+  height: 30px;
+}
+.note-form {
+  display: flex;
+  gap: 10px;
+}
+.note-list-item {
+  padding-top: 4px;
+}
+.cancel-thesis-assignment {
+  padding: 4px;
+  font-size: 14px;
+  background-color: #ff5555;
+  color: white;
+  border: none;
+  cursor: pointer;
+  width: 200px;
+  transition: background-color 0.3s;
+}
+.cancel {
+  display: flex;
+  align-items: center;
+  margin: 20px;
+}
+.cancel-button {
+  padding: 4px;
+  font-size: 14px;
+  background-color: #ff5555;
+  color: white;
+  width: 150px;
+  margin-left: 20px;
+}
+.cancel-button:hover {
+  background-color: #f76363;
 }
