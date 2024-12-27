@@ -10,6 +10,19 @@ const usersRoutes = async (req, res, pathParts, queryParams) => {
     const query = "SELECT * FROM users";
     const result = await dbQuery(query);
     sendResponse(res, 200, result.rows);
+  } else if (
+    req.method === "GET" &&
+    pathParts.length === 2 &&
+    pathParts[1] === "students"
+  ) {
+    // Get all users
+    const query = `SELECT id, name FROM "thesis-management".users WHERE role = 'student'`;
+    const result = await dbQuery(query);
+    sendResponse(
+      res,
+      200,
+      result.rows.map(({ id, name }) => ({ id, name }))
+    );
   } else if (req.method === "GET" && id) {
     // Get user by ID
     const query = `SELECT * FROM "thesis-management".users WHERE id = $1`;

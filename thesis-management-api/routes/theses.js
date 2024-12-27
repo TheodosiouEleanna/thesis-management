@@ -20,10 +20,41 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
 
   if (req.method === "GET" && pathParts.length === 1) {
     // Get all theses of a supervisor
-    const supervisorId = queryParams.supervisor_id;
-    const query = `SELECT * FROM "thesis-management".theses WHERE supervisor_id = $1`;
-    const supervisor_thesis_result = await dbQuery(query, [supervisorId]);
-    sendResponse(res, 200, supervisor_thesis_result.rows);
+    const user_id = queryParams.user_id;
+    const supervisor_thesis_query = `SELECT * FROM "thesis-management".theses WHERE supervisor_id = $1`;
+    const supervisor_thesis_result = await dbQuery(supervisor_thesis_query, [
+      user_id,
+    ]);
+
+    const committee_thesis_query = `SELECT * FROM "thesis-management".theses WHERE id IN (SELECT thesis_id FROM "thesis-management".committees WHERE member_id = $1 AND invite_status = 'accepted')`;
+    const committee_thesis_result = await dbQuery(committee_thesis_query, [
+      user_id,
+    ]);
+    sendResponse(
+      res,
+      200,
+      [...supervisor_thesis_result.rows, ...committee_thesis_result.rows].map(
+        (thesis) => {
+          const thesis_committees_query = `SELECT * FROM "thesis-management".committees
+      LEFT JOIN "thesis-management".users ON "thesis-management".committees.member_id = "thesis-management".users.id
+      WHERE thesis_id = $1`;
+          const thesis_committees_result = dbQuery(thesis_committees_query, [
+            thesis.id,
+          ]);
+          return {
+            id: thesis.id,
+            title: thesis.title,
+            description: thesis.description,
+            student_id: thesis.student_id,
+            supervisor_id: thesis.supervisor_id,
+            status: thesis.status,
+            time_elapsed: getThesisDuration(thesis.started_at),
+            detailed_file: thesis.detailed_file,
+            committees: thesis_committees_result.rows,
+          };
+        }
+      )
+    );
   } else if (
     req.method === "GET" &&
     pathParts.length === 2 &&
@@ -54,18 +85,24 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
       [thesis_id]
     );
 
-    sendResponse(res, thesis_result.rows.length ? 200 : 404, {
-      id: thesis_result.rows[0].id,
-      title: thesis_result.rows[0].title,
-      description: thesis_result.rows[0].description,
-      detailed_file: thesis_result.rows[0].detailed_file,
-      student_id: thesis_result.rows[0].student_id,
-      supervisor_id: thesis_result.rows[0].supervisor_id,
-      status: thesis_result.rows[0].status,
-      committees: committees_result.rows,
-      time_elapsed: getThesisDuration(thesis_result.rows[0].started_at),
-      detailed_file: thesis_result.rows[0].detailed_file,
-    });
+    sendResponse(
+      res,
+      thesis_result.rows.length ? 200 : 404,
+      thesis_result.rows.length
+        ? {
+            id: thesis_result.rows[0].id,
+            title: thesis_result.rows[0].title,
+            description: thesis_result.rows[0].description,
+            detailed_file: thesis_result.rows[0].detailed_file,
+            student_id: thesis_result.rows[0].student_id,
+            supervisor_id: thesis_result.rows[0].supervisor_id,
+            status: thesis_result.rows[0].status,
+            committees: committees_result.rows,
+            time_elapsed: getThesisDuration(thesis_result.rows[0].started_at),
+            detailed_file: thesis_result.rows[0].detailed_file,
+          }
+        : {}
+    );
   } else if (req.method === "POST" && pathParts.length === 1) {
     // Add new thesis
     const contentType = req.headers["content-type"];
@@ -122,6 +159,36 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
     await dbQuery(updateQuery, [filePath, thesisId]);
 
     sendResponse(res, 201, result.rows[0]);
+  } else if (
+    req.method === "PATCH" &&
+    pathParts.length === 3 &&
+    pathParts[2] === "assign"
+  ) {
+    const { student_id, topic_id } = await getRequestBody(req);
+    // Check if thesis is already assigned or student is already assigned to another thesis
+    const checkThesisQuery = `SELECT * FROM "thesis-management".theses WHERE id = $1 AND student_id IS NULL`;
+    const checkResult = await dbQuery(checkThesisQuery, [topic_id]);
+    if (!checkResult.rows.length) {
+      return sendResponse(res, 400, {
+        error: "Thesis is already assigned to a student",
+      });
+    }
+    const checkStudentQuery = `SELECT * FROM "thesis-management".theses WHERE student_id = $1`;
+    const checkStudentResult = await dbQuery(checkStudentQuery, [student_id]);
+    if (checkStudentResult.rows.length) {
+      return sendResponse(res, 400, {
+        error: "Student is already assigned to another thesis",
+      });
+    }
+
+    // Assign thesis to student
+    const query = `UPDATE "thesis-management".theses SET student_id = $1, status = 'under_assignment', started_at = NOW() WHERE id = $2 RETURNING *`;
+    const result = await dbQuery(query, [student_id, topic_id]);
+    sendResponse(
+      res,
+      result.rows.length ? 200 : 404,
+      result.rows[0] || { error: "Thesis not found" }
+    );
   } else if (
     req.method === "PUT" &&
     pathParts.length === 2 &&

@@ -1,4 +1,12 @@
-import { showInfoMessage } from "../utils.js";
+import {
+  showInfoMessage,
+  getRole,
+  filterTheses,
+  exportCSV,
+  exportJSON,
+  downloadFile,
+  renderStatistics,
+} from "../utils.js";
 
 const menuContainer = document.getElementById("role-specific-menu");
 const user = JSON.parse(localStorage.getItem("user"));
@@ -90,7 +98,7 @@ const student_sections = [
           },
         }
       );
-      if (!thesis_response.ok) throw new Error("Failed to fetch thesis data");
+      if (!thesis_response.ok) throw new Error("Thesis Not Found");
 
       const thesis = await thesis_response.json();
       student_thesis_id = thesis.id;
@@ -271,7 +279,6 @@ const instructor_sections = [
       if (!unassigned_response.ok)
         throw new Error("Failed to fetch unassigned theses");
 
-      debugger;
       const unassignedTheses = await unassigned_response.json();
 
       return `
@@ -351,6 +358,17 @@ const instructor_sections = [
   {
     title: "Initial Assignment of a Topic to a Student",
     fetchData: async () => {
+      const students = await fetch(`http://localhost:5000/users/students`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+        },
+      });
+
+      if (!students.ok) throw new Error("Failed to fetch students");
+      const studentsData = await students.json();
+
       const thesis_topics = await fetch(
         `http://localhost:5000/theses/available`,
         {
@@ -363,27 +381,34 @@ const instructor_sections = [
       );
 
       if (!thesis_topics.ok) throw new Error("Failed to fetch thesis topics");
-
       const topics = await thesis_topics.json();
-
-      const topicOptions = topics
-        .map((topic) => `<option value="${topic.id}">${topic.title}</option>`)
-        .join("");
 
       return `
         <h3>Assign Topic to a Student</h3>
         <form id="assign-topic-form">
-          <label for="student-id">Student ID:
-          <input type="text" id="student-id" placeholder="Enter student ID" required />
+          <label for="student-id">Student:
+            <select id="student-id" required>
+              ${studentsData
+                .map(
+                  (student) =>
+                    `<option value="${student.id}">ID: ${student.id}, Name: ${student.name}</option>`
+                )
+                .join("")}
+            </select>
           </label>
 
           <label for="topic-id">Select Topic:
-          <select id="topic-id" placeholder="Select a topic" required>
-          ${topicOptions}
-          </select>
+            <select id="topic-id" required>
+              ${topics
+                .map(
+                  (topic) =>
+                    `<option value="${topic.id}">${topic.title}</option>`
+                )
+                .join("")}
+            </select>
           </label>
 
-          <button class="assign-topic" type="submit">Assign Topic</button>
+          <button id="assign-topic" type="submit">Assign Topic</button>
         </form>
       `;
     },
@@ -392,7 +417,7 @@ const instructor_sections = [
     title: "View List of Theses",
     fetchData: async () => {
       const response = await fetch(
-        `http://localhost:5000/theses?supervisor_id=${user.id}`,
+        `http://localhost:5000/theses?user_id=${user.id}`,
         {
           method: "GET",
           headers: {
@@ -405,30 +430,120 @@ const instructor_sections = [
       const theses = await response.json();
 
       return `
-        <ul class="thesis-list">
-            ${theses
-              .map(
-                (thesis) => `
-                <div id="thesis-container">
-                  <li class="thesis-list-item">
-                    <div class="thesis-content">
-                    <div class="thesis-title">${thesis.title}</div>
-                    <div class="thesis-metadata">
-                    <span class="thesis-status">status: <span class="status">${thesis.status}</span></span>
-                    </div>
-                    </div>
-                    <div class="thesis-actions">
-                    <button data-id="${thesis.id}" class="view-thesis">View Details</button>
-                    </div>
-                  </li>
-                </div>
-              `
-              )
-              .join("")}
-              <button id="export-theses">Export List</button>
-          </ul>
+       <div class="filters">
+        <label for="filter-status">Filter by Status:</label>
+        <select id="filter-status">
+          <option value="">All</option>
+          <option value="under_assignment">Under Assignment</option>
+          <option value="under_examination">Under Examination</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
 
-      `;
+    <label for="filter-role">Filter by Role:</label>
+    <select id="filter-role">
+      <option value="">All</option>
+      <option value="supervisor">Supervisor</option>
+      <option value="committee member">Committee Member</option>
+    </select>
+  </div>
+  <ul class="thesis-list">
+    ${theses
+      .map(
+        (thesis) => `
+        <div id="thesis-container-${thesis.id}" class="thesis-container">
+          <li class="thesis-list-item">
+          <div class="thesis-content-wrapper">
+            <div class="thesis-content">
+              <div class="thesis-title"><strong>${thesis.title}</strong></div>
+              <div class="thesis-metadata">
+                <span id='thesis-status-${
+                  thesis.id
+                }' class="thesis-status">Status: <span id='status-${
+          thesis.id
+        }' class="status">${thesis.status}</span class='thesis-role'>
+        Role:
+        <span id='role-${thesis.id}' class="role">${
+          thesis.supervisor_id === user.id ? "Supervisor" : "Committee Member"
+        }</span>
+          </span>
+              </div>
+            </div>
+            <div class="thesis-actions">
+              <button data-id="${
+                thesis.id
+              }" class="view-thesis">View Details</button>
+            </div>
+          </div>
+          </li>
+          <div class="thesis-form-container" id="view-thesis-form-container-${
+            thesis.id
+          }" style="display:none;">
+              <h4 class="view-topic-header">Thesis Details</h4>
+              <div class='view-line'>
+              <label for="view-title-${thesis.id}">Title:</label>
+              <p id="view-title-${thesis.id}">${thesis.title}</p>
+              </div>
+
+              <div class='view-line'>
+              <label for="view-description-${thesis.id}">Description:</label>
+              <p id="view-description-${thesis.id}">${thesis.description}</p>
+              </div>
+
+              <div class='view-line'>
+              <label for="view-time-elapsed-${thesis.id}">Time Elapsed:</label>
+                <p id="view-time-elapsed-${thesis.id}">${
+          thesis.time_elapsed
+        }</p>
+                </div>
+
+              <div class='view-line'>
+              <label for="view-student-id-${thesis.id}">Student ID:</label>
+              <p id="view-student-id-${thesis.id}">${thesis.student_id}</p>
+              </div>
+
+              <div class='view-line'>
+              <label for="view-supervisor-id-${
+                thesis.id
+              }">Supervisor ID:</label>
+                <p id="view-supervisor-id-${thesis.id}">${
+          thesis.supervisor_id
+        }</p>
+                  </div>
+
+              <div class='view-line'>
+              <label for="view-committees-${thesis.id}">Committees:</label>
+              <p id="view-committees-${thesis.id}">${
+          thesis.committees?.length > 0
+            ? `${thesis.committees[0].name}, ${thesis.committees[1].name}`
+            : "None"
+        }</p>
+                </div>
+
+              <div class='view-line'>
+              <label for="view-detailed-file-${
+                thesis.id
+              }">Detailed File:</label>
+                <p id="view-detailed-file-${thesis.id}">
+                ${
+                  thesis.detailed_file
+                    ? `<a href="${thesis.detailed_file}" download>
+                  ${thesis.detailed_file.split("\\").pop()}
+                  </a>`
+                    : "No file available"
+                }
+                  </p>
+                  </div>
+            </div>
+        </div>
+      `
+      )
+      .join("")}
+  <button id="export-csv">Export as CSV</button>
+  <button id="export-json">Export as JSON</button>
+  </ul>
+`;
     },
   },
   {
@@ -474,28 +589,29 @@ const instructor_sections = [
   {
     title: "View Statistics",
     fetchData: async () => {
-      const response = await fetch(
-        `http://localhost:5000/instructor/statistics`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-        }
-      );
-      if (!response.ok) throw new Error("Failed to fetch statistics");
-      const stats = await response.json();
-
       return `
-        <h3>Statistics</h3>
-        <p>Average Completion Time (Supervised): ${stats.avg_completion_time.supervised}</p>
-        <p>Average Completion Time (Committee Member): ${stats.avg_completion_time.committee}</p>
-        <p>Average Grade (Supervised): ${stats.avg_grade.supervised}</p>
-        <p>Average Grade (Committee Member): ${stats.avg_grade.committee}</p>
-        <p>Total Theses (Supervised): ${stats.total_theses.supervised}</p>
-        <p>Total Theses (Committee Member): ${stats.total_theses.committee}</p>
+        <div id="statistics-section">
+          <h3>Thesis Statistics</h3>
+
+          <div class="chart-container">
+            <h4>Average Completion Time</h4>
+            <canvas id="avgCompletionTimeChart" width="400" height="200"></canvas>
+          </div>
+
+          <div class="chart-container">
+            <h4>Average Grade</h4>
+            <canvas id="avgGradeChart" width="400" height="200"></canvas>
+          </div>
+
+          <div class="chart-container">
+            <h4>Total Number of Theses</h4>
+            <canvas id="totalThesesChart" width="400" height="200"></canvas>
+          </div>
+        </div>
       `;
+    },
+    afterRender: async () => {
+      await renderStatistics();
     },
   },
 ];
@@ -540,7 +656,7 @@ if (userRole === "student") {
 }
 
 if (userRole === "instructor") {
-  instructor_sections.forEach(({ title, fetchData }) => {
+  instructor_sections.forEach(async ({ title, fetchData, afterRender }) => {
     const section = document.createElement("div");
     section.classList.add("menu-section");
 
@@ -564,6 +680,9 @@ if (userRole === "instructor") {
           const content = await fetchData();
           body.innerHTML = content;
           body.dataset.loaded = "true";
+          if (afterRender) {
+            await afterRender();
+          }
         } catch (error) {
           console.error(`Error loading ${title} data:`, error);
           body.innerHTML = `<p>${error.message}</p>`;
@@ -617,238 +736,13 @@ if (userRole === "instructor") {
         formContainer.style.display =
           formContainer.style.display === "none" ? "block" : "none";
       }
-    });
-  });
-}
 
-menuContainer.addEventListener("submit", async (event) => {
-  event.preventDefault(); // 🚀 Prevent the default form submission behavior
+      if (event.target.classList.contains("view-thesis")) {
+        const thesisId = event.target.dataset.id;
 
-  console.log(`Form ID: ${event.target.id}`); // Debug log to ensure the form is correctly identified
-
-  if (userRole === "student") {
-    if (event.target && event.target.id === "edit-profile-form") {
-      const form = event.target;
-      const payload = {
-        user_id: user.id,
-        contact_details: {
-          address: form.address.value,
-          mobile: form.mobile.value,
-          phone: form.landline.value,
-        },
-        email: form.email.value,
-      };
-
-      try {
-        const response = await fetch(`http://localhost:5000/users/${user.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) throw new Error("Failed to update profile data");
-
-        let infoDiv = document.getElementById("infoContainer");
-        if (!infoDiv) {
-          infoDiv = document.createElement("div");
-          infoDiv.id = "infoContainer";
-          infoDiv.style.color = "green";
-          infoDiv.style.marginTop = "10px";
-          const saveButton = document.getElementById("save-profile-button");
-          form.insertBefore(infoDiv, saveButton);
-        }
-
-        infoDiv.textContent = "Profile updated successfully!";
-        setTimeout(() => {
-          infoDiv.style.display = "none";
-        }, 4000);
-      } catch (error) {
-        console.error("Error updating profile:", error);
-        alert(
-          "An error occurred while updating your profile. Please try again."
-        );
-      }
-    }
-
-    if (event.target && event.target.id === "manage-thesis") {
-      const form = event.target;
-      const selectedOptions = Array.from(
-        document.getElementById("committee-members").selectedOptions
-      ).map((option) => option.value);
-
-      const selectedCommittees = available_committees.filter((committee) =>
-        selectedOptions.includes(committee.name)
-      );
-      const payload = selectedCommittees.map((committee) => ({
-        user_role: committee.role,
-        user_id: committee.member_id,
-        thesis_id: student_thesis_id,
-      }));
-
-      try {
-        const response = await fetch(`http://localhost:5000/committees`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) throw new Error("Failed to invite committee members");
-
-        let infoDiv = document.getElementById("infoContainer");
-        if (!infoDiv) {
-          infoDiv = document.createElement("div");
-          infoDiv.id = "infoContainer";
-          infoDiv.style.color = "green";
-          infoDiv.style.marginTop = "10px";
-          const saveButton = document.getElementById("add-members-button");
-          form.insertBefore(infoDiv, saveButton);
-        }
-
-        infoDiv.textContent = "Committee invited successfully!";
-        setTimeout(() => {
-          infoDiv.style.display = "none";
-        }, 4000);
-      } catch (error) {
-        console.error("Error inviting committee members:", error);
-        alert(
-          "An error occurred while inviting the committee. Please try again."
-        );
-      }
-    }
-
-    if (event.target && event.target.id === "examination-details-form") {
-      const form = event.target;
-      const draftFile = document.getElementById("thesis-draft").files[0];
-      const additionalLinks = document.getElementById("additional-links").value;
-      const examDate = document.getElementById("exam-date").value;
-      const examDetails = document.getElementById("exam-details").value;
-      const libraryLink = document.getElementById("library-link").value;
-
-      if (!draftFile) {
-        let infoDiv = document.getElementById("infoContainer");
-        if (!infoDiv) {
-          infoDiv = document.createElement("div");
-          infoDiv.id = "infoContainer";
-          infoDiv.style.color = "orange";
-          infoDiv.style.marginTop = "10px";
-          const submitButton = document.getElementById("submit-exam-details");
-          form.insertBefore(infoDiv, submitButton);
-        }
-        infoDiv.textContent = "Please provide a draft file.";
-        return; // Early exit
-      }
-
-      try {
-        const formData = new FormData();
-        formData.append("draft", draftFile);
-
-        const payload = {
-          additional_links: additionalLinks,
-          exam_date: examDate,
-          exam_details: examDetails,
-          library_link: libraryLink,
-        };
-
-        const response = await fetch(
-          `http://localhost:5000/theses/${student_thesis_id}/material`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-            },
-            body: JSON.stringify(payload),
-          }
-        );
-
-        if (!response.ok)
-          throw new Error("Failed to submit examination details");
-
-        const uploadResponse = await fetch(
-          `http://localhost:5000/theses/${student_thesis_id}/draft`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "multipart/form-data",
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-            },
-            body: formData,
-          }
-        );
-
-        if (!uploadResponse.ok)
-          throw new Error("Failed to upload thesis draft");
-
-        let infoDiv = document.getElementById("infoContainer");
-        if (!infoDiv) {
-          infoDiv = document.createElement("div");
-          infoDiv.id = "infoContainer";
-          infoDiv.style.color = "green";
-          infoDiv.style.marginTop = "10px";
-          form.appendChild(infoDiv);
-        }
-        infoDiv.textContent = "Examination details submitted successfully!";
-        setTimeout(() => {
-          infoDiv.style.display = "none";
-        }, 4000);
-      } catch (error) {
-        console.error("Error submitting examination details:", error);
-        alert("An error occurred. Please try again.");
-      }
-    }
-  }
-
-  if (userRole === "instructor") {
-    event.preventDefault(); // Prevent the default form submission behavior
-    if (event.target && event.target.id === "create-thesis-form") {
-      const form = event.target;
-      const title = document.getElementById("title").value;
-      const description = document.getElementById("description").value;
-      const detailedFile = document.getElementById("detailed-file").files[0];
-
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("description", description);
-      formData.append("detailed_file", detailedFile);
-
-      try {
-        const response = await fetch(
-          `http://localhost:5000/theses?supervisor_id=${user.id}`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-            },
-            body: formData,
-          }
-        );
-
-        if (!response.ok) throw new Error("Failed to create thesis topic");
-
-        let infoDiv = document.getElementById("infoContainer");
-        if (!infoDiv) {
-          infoDiv = document.createElement("div");
-          infoDiv.id = "infoContainer";
-          infoDiv.style.color = "green";
-          infoDiv.style.marginTop = "10px";
-          const submitButton = document.getElementById("create-thesis-topic");
-          form.insertBefore(infoDiv, submitButton);
-        }
-        infoDiv.textContent = "Thesis topic created successfully!";
-        setTimeout(() => {
-          infoDiv.style.display = "none";
-        }, 4000);
-
-        const newThesis = await response.json();
-
-        const unassigned_response = fetch(
-          `http://localhost:5000/theses/unassigned?supervisor_id=${user.id}`,
+        // Fetch the specific thesis details for view
+        const thesis_response = await fetch(
+          `http://localhost:5000/theses/${thesisId}`,
           {
             method: "GET",
             headers: {
@@ -857,52 +751,372 @@ menuContainer.addEventListener("submit", async (event) => {
           }
         );
 
-        if (!unassigned_response.ok)
-          throw new Error("Failed to fetch unassigned theses");
+        if (!thesis_response.ok) {
+          console.error("Failed to fetch thesis details");
+          return;
+        }
 
-        const unassignedTheses = unassigned_response.json();
-      } catch (error) {
-        console.error("Error creating thesis topic:", error);
-        alert("An error occurred. Please try again.");
+        const thesisData = await thesis_response.json();
+        document.getElementById(`view-title-${thesisId}`).textContent =
+          thesisData.title;
+        document.getElementById(`view-description-${thesisId}`).textContent =
+          thesisData.description;
+        document.getElementById(`view-time-elapsed-${thesisId}`).textContent =
+          thesisData.time_elapsed;
+        document.getElementById(`view-student-id-${thesisId}`).textContent =
+          thesisData.student_id;
+        document.getElementById(`view-supervisor-id-${thesisId}`).textContent =
+          thesisData.supervisor_id;
+        document.getElementById(`view-committees-${thesisId}`).textContent =
+          thesisData.committees?.length > 0
+            ? `${thesisData.committees[0].name}, ${thesisData.committees[1].name}`
+            : "Pending";
+
+        const detailedFileElement = document.getElementById(
+          `view-detailed-file-${thesisId}`
+        );
+        detailedFileElement.innerHTML = thesisData.detailed_file
+          ? `<a href="${
+              thesisData.detailed_file
+            }" download>${thesisData.detailed_file.split("\\").pop()}</a>`
+          : "No file available";
+
+        // Toggle visibility
+        const formContainer = document.getElementById(
+          `view-thesis-form-container-${thesisId}`
+        );
+        formContainer.style.display =
+          formContainer.style.display === "none" ? "block" : "none";
+      }
+    });
+
+    document.addEventListener("change", (event) => {
+      if (event.target && event.target.id === "filter-status") {
+        filterTheses();
+      }
+    });
+
+    document.addEventListener("change", (event) => {
+      if (event.target && event.target.id === "filter-role") {
+        filterTheses();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (event.target && event.target.id === "export-csv") {
+        exportCSV();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (event.target && event.target.id === "export-json") {
+        exportJSON();
+      }
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  menuContainer.addEventListener("submit", async (event) => {
+    event.preventDefault(); // 🚀 Prevent the default form submission behavior
+
+    console.log(`Form ID: ${event.target.id}`); // Debug log to ensure the form is correctly identified
+
+    if (userRole === "student") {
+      if (event.target && event.target.id === "edit-profile-form") {
+        const form = event.target;
+        const payload = {
+          user_id: user.id,
+          contact_details: {
+            address: form.address.value,
+            mobile: form.mobile.value,
+            phone: form.landline.value,
+          },
+          email: form.email.value,
+        };
+
+        try {
+          const response = await fetch(
+            `http://localhost:5000/users/${user.id}`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+              },
+              body: JSON.stringify(payload),
+            }
+          );
+
+          if (!response.ok) throw new Error("Failed to update profile data");
+
+          let infoDiv = document.getElementById("infoContainer");
+          if (!infoDiv) {
+            infoDiv = document.createElement("div");
+            infoDiv.id = "infoContainer";
+            infoDiv.style.color = "green";
+            infoDiv.style.marginTop = "10px";
+            const saveButton = document.getElementById("save-profile-button");
+            form.insertBefore(infoDiv, saveButton);
+          }
+
+          infoDiv.textContent = "Profile updated successfully!";
+          setTimeout(() => {
+            infoDiv.style.display = "none";
+          }, 4000);
+        } catch (error) {
+          console.error("Error updating profile:", error);
+          alert(
+            "An error occurred while updating your profile. Please try again."
+          );
+        }
+      }
+
+      if (event.target && event.target.id === "manage-thesis") {
+        const form = event.target;
+        const selectedOptions = Array.from(
+          document.getElementById("committee-members").selectedOptions
+        ).map((option) => option.value);
+
+        const selectedCommittees = available_committees.filter((committee) =>
+          selectedOptions.includes(committee.name)
+        );
+        const payload = selectedCommittees.map((committee) => ({
+          user_role: committee.role,
+          user_id: committee.member_id,
+          thesis_id: student_thesis_id,
+        }));
+
+        try {
+          const response = await fetch(`http://localhost:5000/committees`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok)
+            throw new Error("Failed to invite committee members");
+
+          let infoDiv = document.getElementById("infoContainer");
+          if (!infoDiv) {
+            infoDiv = document.createElement("div");
+            infoDiv.id = "infoContainer";
+            infoDiv.style.color = "green";
+            infoDiv.style.marginTop = "10px";
+            const saveButton = document.getElementById("add-members-button");
+            form.insertBefore(infoDiv, saveButton);
+          }
+
+          infoDiv.textContent = "Committee invited successfully!";
+          setTimeout(() => {
+            infoDiv.style.display = "none";
+          }, 4000);
+        } catch (error) {
+          console.error("Error inviting committee members:", error);
+          alert(
+            "An error occurred while inviting the committee. Please try again."
+          );
+        }
+      }
+
+      if (event.target && event.target.id === "examination-details-form") {
+        const form = event.target;
+        const draftFile = document.getElementById("thesis-draft").files[0];
+        const additionalLinks =
+          document.getElementById("additional-links").value;
+        const examDate = document.getElementById("exam-date").value;
+        const examDetails = document.getElementById("exam-details").value;
+        const libraryLink = document.getElementById("library-link").value;
+
+        if (!draftFile) {
+          let infoDiv = document.getElementById("infoContainer");
+          if (!infoDiv) {
+            infoDiv = document.createElement("div");
+            infoDiv.id = "infoContainer";
+            infoDiv.style.color = "orange";
+            infoDiv.style.marginTop = "10px";
+            const submitButton = document.getElementById("submit-exam-details");
+            form.insertBefore(infoDiv, submitButton);
+          }
+          infoDiv.textContent = "Please provide a draft file.";
+          return; // Early exit
+        }
+
+        try {
+          const formData = new FormData();
+          formData.append("draft", draftFile);
+
+          const payload = {
+            additional_links: additionalLinks,
+            exam_date: examDate,
+            exam_details: examDetails,
+            library_link: libraryLink,
+          };
+
+          const response = await fetch(
+            `http://localhost:5000/theses/${student_thesis_id}/material`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+              },
+              body: JSON.stringify(payload),
+            }
+          );
+
+          if (!response.ok)
+            throw new Error("Failed to submit examination details");
+
+          const uploadResponse = await fetch(
+            `http://localhost:5000/theses/${student_thesis_id}/draft`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "multipart/form-data",
+                Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+              },
+              body: formData,
+            }
+          );
+
+          if (!uploadResponse.ok)
+            throw new Error("Failed to upload thesis draft");
+
+          let infoDiv = document.getElementById("infoContainer");
+          if (!infoDiv) {
+            infoDiv = document.createElement("div");
+            infoDiv.id = "infoContainer";
+            infoDiv.style.color = "green";
+            infoDiv.style.marginTop = "10px";
+            form.appendChild(infoDiv);
+          }
+          infoDiv.textContent = "Examination details submitted successfully!";
+          setTimeout(() => {
+            infoDiv.style.display = "none";
+          }, 4000);
+        } catch (error) {
+          console.error("Error submitting examination details:", error);
+          alert("An error occurred. Please try again.");
+        }
       }
     }
 
-    debugger;
-    if (event.target && event.target.id.startsWith("edit-thesis-form")) {
-      const form = event.target;
-      const title = document.querySelector(".edit-title").value;
-      const description = document.querySelector(".edit-description").value;
-      const detailedFile = document.querySelector(".edit-detailed-file")
-        .files[0];
+    if (userRole === "instructor") {
+      event.preventDefault(); // Prevent the default form submission behavior
+      if (event.target && event.target.id === "create-thesis-form") {
+        const form = event.target;
+        const thesis_id = event.target.id.split("-").pop();
+        const title = document.getElementById("title").value;
+        const description = document.getElementById("description").value;
+        const detailedFile = document.getElementById("detailed-file").files[0];
 
-      const thesis_id = event.target.id.split("-").pop();
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("description", description);
+        formData.append("detailed_file", detailedFile);
 
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("description", description);
-      formData.append("detailed_file", detailedFile);
+        try {
+          const response = await fetch(
+            `http://localhost:5000/theses?supervisor_id=${user.id}`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+              },
+              body: formData,
+            }
+          );
 
-      try {
+          if (!response.ok) throw new Error("Failed to create thesis topic");
+
+          showInfoMessage(
+            "Thesis topic created successfully!",
+            `#create-thesis-topic`
+          );
+
+          const newThesis = await response.json();
+        } catch (error) {
+          console.error("Error creating thesis topic:", error);
+          alert("An error occurred. Please try again.");
+        }
+      }
+
+      if (event.target && event.target.id.startsWith("edit-thesis-form")) {
+        const form = event.target;
+        const thesis_id = event.target.id.split("-").pop();
+        const title = document.getElementById(`edit-title-${thesis_id}`).value;
+        const description = document.getElementById(
+          `edit-description-${thesis_id}`
+        ).value;
+        const detailedFile = document.getElementById(
+          `edit-detailed-file-${thesis_id}`
+        ).files[0];
+
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("description", description);
+        formData.append("detailed_file", detailedFile);
+
+        try {
+          const response = await fetch(
+            `http://localhost:5000/theses/${thesis_id}?supervisor_id=${user.id}`,
+            {
+              method: "PUT",
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+              },
+              body: formData,
+            }
+          );
+
+          if (!response.ok) throw new Error("Failed to create thesis topic");
+          showInfoMessage(
+            "Thesis topic updated successfully!",
+            `#update-thesis-topic-${thesis_id}`
+          );
+
+          const newThesis = await response.json();
+        } catch (error) {}
+      }
+
+      if (event.target && event.target.id.startsWith("assign-topic-form")) {
+        const form = event.target;
+        const student_id = document.getElementById("student-id").value;
+        const topic_id = document.getElementById("topic-id").value;
+
+        const payload = {
+          student_id,
+          topic_id,
+        };
+
         const response = await fetch(
-          `http://localhost:5000/theses/${thesis_id}?supervisor_id=${user.id}`,
+          `http://localhost:5000/theses/${topic_id}/assign?supervisor_id=${user.id}`,
+
           {
-            method: "PUT",
+            method: "PATCH",
             headers: {
+              "Content-Type": "application/json",
               Authorization: `Bearer ${localStorage.getItem("authToken")}`,
             },
-            body: formData,
+            body: JSON.stringify(payload),
           }
         );
 
-        if (!response.ok) throw new Error("Failed to create thesis topic");
+        const response_data = await response.json();
 
+        if (!response.ok) {
+          showInfoMessage(response_data.error, `#assign-topic`, true);
+          throw new Error("Failed to assign topic to student");
+        }
         showInfoMessage(
-          "Thesis topic updated successfully!",
-          `#update-thesis-topic-${thesis_id}`
+          response_data.error || "Thesis topic assigned successfully!",
+          `#assign-topic`
         );
-
-        const newThesis = await response.json();
-      } catch (error) {}
+      }
     }
-  }
+  });
 });
