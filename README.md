@@ -26,8 +26,6 @@ This is a web application built with a vanilla JavaScript frontend and a Node.js
   npm install -g http-server
   ```
 
-md
-
 # Getting Started
 
 ### 1. Clone the Repository
@@ -37,11 +35,7 @@ git clone <repository-url>
 cd <repository-directory>
 ```
 
-### 2. Set Up Environment Variables
-
-Create a `.env` file in the project root with the following content:
-
-### 3. Start the Database with Docker Compose (or Alternative)
+### 2. Start the Database with Docker Compose (or Alternative)
 
 #### Option 1: Using Docker Compose
 
@@ -100,3 +94,13 @@ docker-compose down
 ```
 
 If you use VSCode Live Server for the client, it refreshes the page on some form submissions.
+
+### Important Notes:
+
+- **Password for any user of the system is** : `hashed_password1`
+- There will be no files initially for demonstration, you 'll have to manually upload in each case.
+
+- Recommended users for presentation:
+  **Instructor**: Jane Smith
+  **Student**: John Doe
+  **Secretariat**: Jake Wilson

@@ -104,7 +104,7 @@ const getThesisDuration = (started_at) => {
     timeElapsedString += "Just started";
   }
 
-  return timeElapsedString;
+  return { timeElapsedString, timeElapsed };
 };
 
 /**
@@ -113,8 +113,13 @@ const getThesisDuration = (started_at) => {
  * @param {string} filename - The original filename of the file.
  * @returns {string} - The path where the file was saved.
  */
-const handleFileUpload = (content, filename) => {
-  const uploadsDir = path.join(__dirname, "..", "uploads");
+const handleFileUpload = (content, filename, thesis_id) => {
+  const uploadsDir = path.join(
+    __dirname,
+    "..",
+    "uploads",
+    thesis_id.toString()
+  );
 
   // Ensure the uploads directory exists
   if (!fs.existsSync(uploadsDir)) {

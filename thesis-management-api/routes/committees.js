@@ -67,6 +67,21 @@ const committeesRoutes = async (req, res, pathParts, queryParams) => {
     const { thesis_id } = await getRequestBody(req);
     const query = `UPDATE "thesis-management".committees SET invite_status = $1 WHERE thesis_id = $2 AND member_id = $3 RETURNING *`;
     const result = await dbQuery(query, ["accepted", thesis_id, id]);
+
+    const thesis_committees_query = `SELECT * FROM "thesis-management".committees WHERE thesis_id = $1`;
+    const thesis_committees_result = await dbQuery(thesis_committees_query, [
+      thesis_id,
+    ]);
+
+    const hasAtLeastTwoMembers =
+      thesis_committees_result.rows.filter(
+        (committee) => committee.invite_status === "accepted"
+      ).length >= 2;
+
+    if (hasAtLeastTwoMembers) {
+      const thesis_query = `UPDATE "thesis-management".theses SET status = $1 WHERE id = $2 RETURNING *`;
+      await dbQuery(thesis_query, ["active", thesis_id]);
+    }
     sendResponse(
       res,
       result.rows.length ? 200 : 404,

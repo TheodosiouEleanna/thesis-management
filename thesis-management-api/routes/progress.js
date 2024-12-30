@@ -14,11 +14,7 @@ const progressRoutes = async (req, res, pathParts, queryParams) => {
     // Get progress notes by thesis ID
     const query = `SELECT * FROM "thesis-management".progress WHERE thesis_id = $1 AND instructor_id = $2 ORDER BY created_at DESC`;
     const result = await dbQuery(query, [id, queryParams.instructor_id]);
-    sendResponse(
-      res,
-      result.rows.length ? 200 : 404,
-      result.rows || { error: "No progress notes found" }
-    );
+    sendResponse(res, 200, result.rows);
   } else if (req.method === "POST") {
     // Add new progress note
     const { thesis_id, instructor_id, note } = await getRequestBody(req);

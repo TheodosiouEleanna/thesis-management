@@ -6,6 +6,8 @@ import {
   exportJSON,
   downloadFile,
   renderStatistics,
+  displayError,
+  displayAnnouncement,
 } from "../utils.js";
 
 const menuContainer = document.getElementById("role-specific-menu");
@@ -14,13 +16,14 @@ const userRole = user.role;
 let student_thesis_id;
 let available_committees;
 
+// Sections for the dashboard based on user role
 const student_sections = [
   {
     title: "View Topic",
     fetchData: async () => {
       const student_id = user.id;
       const response = await fetch(
-        `http://localhost:5000/theses/${student_id}`,
+        `http://localhost:5000/theses?student_id=${student_id}`,
         {
           method: "GET",
           headers: {
@@ -104,7 +107,7 @@ const student_sections = [
     fetchData: async () => {
       const student_id = user.id;
       const thesis_response = await fetch(
-        `http://localhost:5000/theses/${student_id}`,
+        `http://localhost:5000/theses?student_id=${student_id}`,
         {
           method: "GET",
           headers: {
@@ -224,7 +227,7 @@ const student_sections = [
 
         const thesis_material = await thesis_material_response.json();
 
-        const dateStr = thesis_material.exam_date;
+        const dateStr = thesis_material?.exam_date;
 
         // Convert to compatible value for datetime-local input
         const dateObj = new Date(dateStr);
@@ -234,13 +237,15 @@ const student_sections = [
             <h4>Your Thesis is: Under Examination</h4>
             <form id="examination-details-form">
               <p>Upload Thesis Draft:</p>
-              <input type="file" id="thesis-draft" accept=".pdf,.docx" value=""><a href="/uploads/myfile.pdf" download>${
-                thesis_material.file_url
-              }</a></input>
+              <input type="file" id="thesis-draft" accept=".pdf,.docx" value=""><a href="${
+                thesis_material?.file_url
+              }" download>${
+          thesis_material?.file_url.split("\\").pop() ?? ""
+        }</a></input>
 
               <p>Upload Additional Material (e.g., Google Drive links):</p>
               <input type="text" id="additional-links" placeholder="Enter links" value="${
-                thesis_material.additional_material
+                thesis_material?.additional_material
               }"/>
 
               <p>Schedule Examination:</p>
@@ -248,7 +253,7 @@ const student_sections = [
 
               <p>Examination Details:</p>
               <input type="text" id="exam-details" placeholder="Enter room or connection link" value="${
-                thesis_material.exam_details
+                thesis_material?.exam_details
               }"/>
 
               <p>Final Submission:</p>
@@ -258,11 +263,16 @@ const student_sections = [
 
               <p>Examination Report:</p>
               <a href="${
-                thesis_material.exam_report_url
+                thesis_material?.exam_report_url
               }" target="_blank">View Examination Report</a>
 
               <button type="submit" id="submit-exam-details">Submit</button>
             </form>
+          </div>`;
+      } else if (thesis.status === "active") {
+        return `
+          <div>
+           <h4>Your thesis is active. No further actions available.</h4>
           </div>`;
       } else if (thesis.status === "completed") {
         return `
@@ -351,7 +361,9 @@ const instructor_sections = [
                    }" accept="application/pdf">
                   </label>
                   <label for="href">Detailed File:  &nbsp; &nbsp;
-                  <a href="${thesis.detailed_file}" download>${
+                  <a href="${
+                    thesis.detailed_file
+                  }" download id="download-detailed-file-${thesis.id}">${
                   thesis.detailed_file
                     ? `${thesis.detailed_file.split("\\").pop()}`
                     : ""
@@ -462,8 +474,8 @@ const instructor_sections = [
       <option value="supervisor">Supervisor</option>
       <option value="committee member">Committee Member</option>
     </select>
-  </div>
-  <ul class="thesis-list">
+    </div>
+    <ul class="thesis-list">
     ${theses
       .map(
         (thesis) => `
@@ -543,7 +555,9 @@ const instructor_sections = [
                 <p id="view-detailed-file-${thesis.id}">
                 ${
                   thesis.detailed_file
-                    ? `<a href="${thesis.detailed_file}" download>
+                    ? `<a href="${
+                        thesis.detailed_file
+                      }" download id="download-detailed-file-${thesis.id}">
                   ${thesis.detailed_file.split("\\").pop()}
                   </a>`
                     : "No file available"
@@ -555,10 +569,10 @@ const instructor_sections = [
       `
       )
       .join("")}
-  <button id="export-csv">Export as CSV</button>
-  <button id="export-json">Export as JSON</button>
-  </ul>
-`;
+    <button id="export-csv">Export as CSV</button>
+    <button id="export-json">Export as JSON</button>
+    </ul>
+    `;
     },
   },
   {
@@ -676,7 +690,7 @@ const instructor_sections = [
                     }">View Invited Members</button>
                     ${
                       user.id === thesis.supervisor_id
-                        ? `<button class="cancel-assignment" data-id="${thesis.id}">Cancel Thesis Assignment</button>`
+                        ? `<button class="cancel-assignment" data-id="${thesis.id}">Cancel Assignment</button>`
                         : ""
                     }
                   `
@@ -691,7 +705,7 @@ const instructor_sections = [
                     ${
                       user.id === thesis.supervisor_id
                         ? `<button class="change-status-to-under-examination" data-id="${thesis.id}">Change Status to Under Examination</button>
-                                  <button class="cancel-thesis-assignment" data-id="${thesis.id}">Cancel Assignment</button>
+                                  <button class="cancel-thesis-assignment" data-id="${thesis.id}">Cancel Thesis</button>
                         `
                         : ""
                     }
@@ -824,121 +838,115 @@ const instructor_sections = [
           const thesisId = e.target.dataset.id;
           let noteSection = document.querySelector(`#note-section-${thesisId}`);
 
-          if (!noteSection) {
-            noteSection = document.createElement("div");
-            noteSection.id = `note-section-${thesisId}`;
-            noteSection.classList.add(`note-section`);
-            noteSection.innerHTML = `
+          if (noteSection) {
+            noteSection.remove();
+          }
+
+          noteSection = document.createElement("div");
+          noteSection.id = `note-section-${thesisId}`;
+          noteSection.classList.add(`note-section`);
+          noteSection.innerHTML = `
             <div id='note-form-${thesisId}' class="note-form">
               <textarea id="note-input-${thesisId}" maxlength="300" placeholder="Enter your note (up to 300 characters)..."></textarea>
               <button class="add-note" id="add-note-${thesisId}">Add Note</button>
             </div>
+            <h4>Notes</h4>
               <ul class id="note-list-${thesisId}" class="note-list"></ul>
             `;
-            document
-              .getElementById(`thesis-${thesisId}`)
-              .appendChild(noteSection);
+          document
+            .getElementById(`thesis-${thesisId}`)
+            .appendChild(noteSection);
 
-            const noteList = [];
-            const noteListElement = noteSection.querySelector(
-              `#note-list-${thesisId}`
-            );
+          const noteList = [];
+          const noteListElement = noteSection.querySelector(
+            `#note-list-${thesisId}`
+          );
 
-            // Populate existing notes via GET request
-            fetch(
-              `http://localhost:5000/progress/${thesisId}?instructor_id=${user.id}`,
-              {
-                method: "GET",
+          // Populate existing notes via GET request
+          fetch(
+            `http://localhost:5000/progress/${thesisId}?instructor_id=${user.id}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+              },
+            }
+          )
+            .then((response) => response.json())
+            .then((notes) => {
+              if (notes && Array.isArray(notes)) {
+                console.log("Notes:", notes);
+                notes.forEach((note) => {
+                  noteList.push(note);
+                  const listItem = document.createElement("li");
+                  listItem.classList.add("note-list-item");
+                  listItem.textContent = note.note;
+                  noteListElement.appendChild(listItem);
+                });
+              }
+            })
+            .catch((error) => {
+              console.error("Error fetching notes:", error);
+            });
+
+          const addNoteButton = noteSection.querySelector(
+            `#add-note-${thesisId}`
+          );
+
+          addNoteButton.addEventListener("click", () => {
+            const noteInput = document.querySelector(`#note-input-${thesisId}`);
+            const note = noteInput.value.trim();
+
+            if (note && note.length <= 300) {
+              // Add note to the UI list
+              noteList.push(note);
+              const listItem = document.createElement("li");
+              listItem.classList.add("note-list-item");
+              listItem.textContent = note;
+              noteListElement.appendChild(listItem);
+
+              // Send the note to the server
+              fetch(`http://localhost:5000/progress`, {
+                method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                   Authorization: `Bearer ${localStorage.getItem("authToken")}`,
                 },
-              }
-            )
-              .then((response) => response.json())
-              .then((notes) => {
-                if (notes && Array.isArray(notes)) {
-                  console.log("Notes:", notes);
-                  notes.forEach((note) => {
-                    noteList.push(note);
-                    const listItem = document.createElement("li");
-                    listItem.classList.add("note-list-item");
-                    listItem.textContent = note.note;
-                    noteListElement.appendChild(listItem);
-                  });
-                }
+                body: JSON.stringify({
+                  thesis_id: thesisId,
+                  note,
+                  instructor_id: user.id,
+                }),
               })
-              .catch((error) => {
-                console.error("Error fetching notes:", error);
-              });
-
-            const addNoteButton = noteSection.querySelector(
-              `#add-note-${thesisId}`
-            );
-
-            addNoteButton.addEventListener("click", () => {
-              const noteInput = document.querySelector(
-                `#note-input-${thesisId}`
-              );
-              const note = noteInput.value.trim();
-
-              if (note && note.length <= 300) {
-                // Add note to the UI list
-                noteList.push(note);
-                const listItem = document.createElement("li");
-                listItem.classList.add("note-list-item");
-                listItem.textContent = note;
-                noteListElement.appendChild(listItem);
-
-                // Send the note to the server
-                fetch(`http://localhost:5000/progress`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem(
-                      "authToken"
-                    )}`,
-                  },
-                  body: JSON.stringify({
-                    thesis_id: thesisId,
-                    note,
-                    instructor_id: user.id,
-                  }),
-                })
-                  .then((response) => {
-                    if (response.ok) {
-                      const form = document.querySelector(
-                        `#note-form-${thesisId}`
-                      );
-                      displayInfoMessage(
-                        "Note recorded successfully",
-                        form,
-                        "green"
-                      );
-                      noteInput.value = "";
-                    } else {
-                      alert("Failed to record note");
-                    }
-                  })
-                  .catch((error) => {
-                    console.error("Error recording note:", error);
+                .then((response) => {
+                  if (response.ok) {
                     const form = document.querySelector(
                       `#note-form-${thesisId}`
                     );
                     displayInfoMessage(
-                      "Failed to record note. Please try again later.",
+                      "Note recorded successfully",
                       form,
-                      "red"
+                      "green"
                     );
-                  });
-              } else {
-                alert("Note must be 300 characters or less.");
-              }
-            });
-          } else {
-            noteSection.style.display =
-              noteSection.style.display === "none" ? "block" : "none";
-          }
+                    noteInput.value = "";
+                  } else {
+                    alert("Failed to record note");
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error recording note:", error);
+                  const form = document.querySelector(`#note-form-${thesisId}`);
+                  displayInfoMessage(
+                    "Failed to record note. Please try again later.",
+                    form,
+                    "red"
+                  );
+                });
+            } else {
+              alert("Note must be 300 characters or less.");
+            }
+          });
         });
       });
 
@@ -983,26 +991,47 @@ const instructor_sections = [
 
             // Create new note section
             noteSection = document.createElement("div");
-            noteSection.id = `cancel-${thesisId}`;
+            noteSection.classList.add("note-section");
+            noteSection.id = `note-section-${thesisId}`;
 
             // Calculate if time elapsed is greater than two years (in seconds)
-            const twoYearsInSeconds = 2 * 365 * 24 * 60 * 60; // 2 years in seconds
-            const timeElapsedInSeconds = data.time_elapsed;
+            const twoYearsInSeconds = 2 * 365 * 24 * 60 * 60 * 1000; // 2 years in milliseconds
+            const timeElapsedInMilliSeconds = data.time_elapsed;
 
             // Enable button if time elapsed is greater than 2 years
-            const isButtonEnabled = timeElapsedInSeconds > twoYearsInSeconds;
+            const isButtonEnabled =
+              timeElapsedInMilliSeconds > twoYearsInSeconds;
 
             noteSection.innerHTML = `
               <div class='cancel' id='cancel-${thesisId}'>
+              ${
+                isButtonEnabled
+                  ? `
+              <h4 for="general-assembly-cancellation" class="general-assembly-cancellation">General
+                Assembly Cancellation:
+                </h4>
+                <form class="cancellation-form">
+                      <label for="cancellation-id">Cancellation ID:
+                      </label>
+                      <input type="number" id="cancellation-id"/>
+                      <label for="cancellation-date">Cancellation Date:
+                      </label>
+                      <input type="date" id="cancellation-date"/>
+                      </form>
+                    `
+                  : ``
+              }
                 <p><span class="label">Time Elapsed:</span> ${
-                  data.time_elapsed
-                }</p>
-                <button class="cancel-button" id="cancel-thesis-assignment-${thesisId}"
-                  ${isButtonEnabled ? "" : "disabled"}>
-                  Cancel
-                </button>
+                  data.time_elapsed_string
+                }
+                ${
+                  isButtonEnabled
+                    ? ` <button class="cancel-button" id="cancel-thesis-assignment-${thesisId}">Cancel</button>`
+                    : `<p class="info">(You can only cancel if 2 years have passed since the assignment.)</p>`
+                }
+
+                </p>
               </div>
-              <ul id="note-list-${thesisId}" class="note-list"></ul>
             `;
 
             parentElement.appendChild(noteSection);
@@ -1014,10 +1043,14 @@ const instructor_sections = [
         .forEach((button) => {
           button.addEventListener("click", async (e) => {
             const thesisId = e.target.dataset.id;
+
+            const parentElement = document.getElementById(`thesis-${thesisId}`);
+            parentElement.innerHTML = ``;
+
             const response = await fetch(
               `http://localhost:5000/theses/${thesisId}/change-status`,
               {
-                method: "POST",
+                method: "PATCH",
                 headers: {
                   "Content-Type": "application/json",
                   Authorization: `Bearer ${localStorage.getItem("authToken")}`,
@@ -1031,7 +1064,6 @@ const instructor_sections = [
               noteSection.remove();
             }
 
-            const parentElement = document.getElementById(`thesis-${thesisId}`);
             if (!parentElement) {
               console.error(
                 `Parent element with ID thesis-${thesisId} not found.`
@@ -1057,6 +1089,10 @@ const instructor_sections = [
             parentElement.appendChild(message);
 
             setTimeout(() => {
+              parentElement.removeChild(info);
+            }, 5000);
+
+            setTimeout(() => {
               message.remove();
             }, 3000);
           });
@@ -1065,8 +1101,41 @@ const instructor_sections = [
       document.querySelectorAll(".view-thesis-draft").forEach((button) => {
         button.addEventListener("click", async (e) => {
           const thesisId = e.target.dataset.id;
-          const response = await fetch(
-            `http://localhost:5000/theses/${thesisId}/draft`,
+          const parentElement = document.getElementById(`thesis-${thesisId}`);
+
+          const gradeSection = document.getElementById(
+            `grade-section-${thesisId}`
+          );
+          if (gradeSection) {
+            gradeSection.remove();
+          }
+          let gradeContainer = document.getElementById(
+            `grades-table-${thesisId}`
+          );
+          if (gradeContainer) {
+            gradeContainer.remove();
+          }
+          let draftSection = document.getElementById(
+            `draft-section-${thesisId}`
+          );
+          if (draftSection) {
+            draftSection.remove();
+          }
+          const announcementSection = document.getElementById(
+            `announcement-section-${thesisId}`
+          );
+          if (announcementSection) {
+            announcementSection.remove();
+          }
+          const errorMessage = document.getElementById(
+            `errorMessage-${thesisId}`
+          );
+          if (errorMessage) {
+            errorMessage.remove();
+          }
+
+          const thesis_response = await fetch(
+            `http://localhost:5000/theses/${thesisId}/material`,
             {
               method: "GET",
               headers: {
@@ -1075,8 +1144,62 @@ const instructor_sections = [
               },
             }
           );
-          const draft = await response.json();
-          alert(`Thesis draft for Thesis ID ${thesisId}: ${draft.content}`);
+
+          if (!thesis_response.ok) {
+            const info = document.createElement("p");
+            info.textContent = "There is no Thesis Draft available";
+            info.style.color = "orange";
+            info.style.padding = "5px";
+            parentElement.appendChild(info);
+
+            setTimeout(() => {
+              parentElement.removeChild(info);
+            }, 5000);
+            throw new Error("Failed to fetch thesis material");
+            return;
+          }
+          const thesis_material = await thesis_response.json();
+
+          const fileUrl = thesis_material.file_url;
+          const fileName = fileUrl.split("\\").pop();
+
+          const response = await fetch(
+            `http://localhost:5000/theses/${thesisId}/draft?file_url=${fileUrl}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+              },
+            }
+          );
+
+          if (!response.ok) {
+            const info = document.createElement("p");
+            info.textContent = "Failed to fetch thesis draft";
+            info.style.color = "red";
+            info.style.paddingTop = "10px";
+            parentElement.appendChild(info);
+            throw new Error("Failed to fetch thesis draft");
+            return;
+          }
+
+          draftSection = document.createElement("label");
+          draftSection.textContent = "Draft File: ";
+          draftSection.classList.add("draft-section");
+          draftSection.id = `draft-section-${thesisId}`;
+          draftSection.style.padding = "10px";
+          draftSection.style.marginTop = "10px";
+          parentElement.appendChild(draftSection);
+          const link = document.createElement("a");
+          link.style.marginLeft = "20px";
+          link.classList.add("draft-link");
+          link.download = fileUrl;
+          link.textContent = fileName;
+          draftSection.appendChild(link);
+
+          const draft = await response.blob();
+          link.href = URL.createObjectURL(draft);
         });
       });
 
@@ -1085,6 +1208,39 @@ const instructor_sections = [
         .forEach((button) => {
           button.addEventListener("click", async (e) => {
             const thesisId = e.target.dataset.id;
+            const parentElement = document.getElementById(`thesis-${thesisId}`);
+
+            const gradeSection = document.getElementById(
+              `grade-section-${thesisId}`
+            );
+            if (gradeSection) {
+              gradeSection.remove();
+            }
+            let gradeContainer = document.getElementById(
+              `grades-table-${thesisId}`
+            );
+            if (gradeContainer) {
+              gradeContainer.remove();
+            }
+            const draftSection = document.getElementById(
+              `draft-section-${thesisId}`
+            );
+            if (draftSection) {
+              draftSection.remove();
+            }
+            const announcementSection = document.getElementById(
+              `announcement-section-${thesisId}`
+            );
+            if (announcementSection) {
+              announcementSection.remove();
+            }
+            const errorMessage = document.getElementById(
+              `errorMessage-${thesisId}`
+            );
+            if (errorMessage) {
+              errorMessage.remove();
+            }
+
             const response = await fetch(
               `http://localhost:5000/theses/${thesisId}/generate-presentation-announcement`,
               {
@@ -1095,12 +1251,16 @@ const instructor_sections = [
                 },
               }
             );
+            const data = await response.json();
+
             if (response.ok) {
-              alert(
-                `Presentation announcement generated for Thesis ID ${thesisId}`
-              );
+              // Show the announcement
+
+              displayAnnouncement(data, parentElement, thesisId);
             } else {
-              alert("Failed to generate presentation announcement");
+              // Display error message
+
+              displayError(data.error, parentElement, thesisId);
             }
           });
         });
@@ -1108,24 +1268,582 @@ const instructor_sections = [
       document.querySelectorAll(".record-grade").forEach((button) => {
         button.addEventListener("click", async (e) => {
           const thesisId = e.target.dataset.id;
-          const grade = prompt("Enter the grade for the thesis:");
-          if (grade) {
+          const parentElement = document.getElementById(`thesis-${thesisId}`);
+
+          let gradeSection = document.getElementById(
+            `grade-section-${thesisId}`
+          );
+          if (gradeSection) {
+            gradeSection.remove();
+          }
+          let gradeContainer = document.getElementById(
+            `grades-table-${thesisId}`
+          );
+          if (gradeContainer) {
+            gradeContainer.remove();
+          }
+
+          const draftSection = document.getElementById(
+            `draft-section-${thesisId}`
+          );
+          if (draftSection) {
+            draftSection.remove();
+          }
+          const announcementSection = document.getElementById(
+            `announcement-section-${thesisId}`
+          );
+          if (announcementSection) {
+            announcementSection.remove();
+          }
+          const errorMessage = document.getElementById(
+            `errorMessage-${thesisId}`
+          );
+          if (errorMessage) {
+            errorMessage.remove();
+          }
+
+          // Remove existing UI elements if present
+          const existingGradeSection = document.querySelector(
+            `#grade-section-${thesisId}`
+          );
+          if (existingGradeSection) {
+            existingGradeSection.remove();
+          }
+
+          // Create UI for grade recording
+          gradeSection = document.createElement("div");
+          gradeSection.id = `grade-section-${thesisId}`;
+          gradeSection.classList.add("grade-section");
+          gradeSection.innerHTML = `
+              <h4 class="grade-header">Record Grade for Thesis</h4>
+              <div class="grade-form">
+              <label for="grade-input-${thesisId} class='grade-label">Grade:
+              <input type="number" id="grade-input-${thesisId}" class="grade-input" min="0" max="10" step="0.1" />
+              </label>
+              <label for="grade-input-${thesisId} class='grade-label">Criteria:
+              <input type="string" id="grade-criteria-${thesisId}" class="grade-criteria" min="0" max="10" step="0.1" />
+              </label>
+              <button id="submit-grade-${thesisId}" class="submit-grade">Submit Grade</button>
+              </div>
+              <button id="view-grades-${thesisId}" class="view-grades">View Grades (Committee)</button>
+            `;
+          parentElement.appendChild(gradeSection);
+
+          // Handle grade submission
+          document
+            .querySelector(`#submit-grade-${thesisId}`)
+            .addEventListener("click", async () => {
+              const grade = document.querySelector(
+                `#grade-input-${thesisId}`
+              ).value;
+              const criteria = document.querySelector(
+                `#grade-criteria-${thesisId}`
+              ).value;
+              if (!grade) {
+                alert("Please enter a valid grade.");
+                return;
+              }
+
+              const response = await fetch(
+                `http://localhost:5000/grades?thesis_id=${thesisId}`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem(
+                      "authToken"
+                    )}`,
+                  },
+                  body: JSON.stringify({ grade, criteria, member_id: user.id }),
+                }
+              );
+
+              if (response.ok) {
+                alert(`Grade recorded for Thesis ID ${thesisId}`);
+              } else {
+                alert("Failed to record grade.");
+              }
+            });
+
+          // Handle viewing committee grades
+          document
+            .querySelector(`#view-grades-${thesisId}`)
+            .addEventListener("click", async () => {
+              const response = await fetch(
+                `http://localhost:5000/grades?thesis_id=${thesisId}`,
+                {
+                  method: "GET",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem(
+                      "authToken"
+                    )}`,
+                  },
+                }
+              );
+
+              if (response.ok) {
+                const grades = await response.json();
+
+                let existingTable = document.querySelector(
+                  `#grades-table-${thesisId}`
+                );
+                if (existingTable) {
+                  existingTable.remove();
+                }
+
+                // Create a container for the grades table
+                const parentElement = document.getElementById(
+                  `thesis-${thesisId}`
+                );
+                if (!parentElement) {
+                  console.error(
+                    `Parent element with ID thesis-${thesisId} not found.`
+                  );
+                  return;
+                }
+
+                const tableContainer = document.createElement("div");
+                tableContainer.id = `grades-table-${thesisId}`;
+                tableContainer.classList.add("grades-container");
+
+                // Generate the table
+                const tableHTML = `
+                  <table class="grades-table">
+                    <thead>
+                      <tr>
+                        <th>Committee Member</th>
+                        <th>Grade</th>
+                        <th>Criteria</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${grades
+                        .map(
+                          (grade) =>
+                            `<tr>
+                              <td>${grade.name}</td>
+                              <td>${grade.grade}</td>
+                              <td>${grade.criteria}</td>
+                            </tr>`
+                        )
+                        .join("")}
+                    </tbody>
+                  </table>
+                `;
+
+                // Add the table to the container
+                tableContainer.innerHTML = tableHTML;
+
+                // Append the container to the parent element
+                parentElement.appendChild(tableContainer);
+              } else {
+                console.error("Failed to fetch grades for the thesis.");
+              }
+            });
+        });
+      });
+    },
+  },
+];
+
+const secretariat_sections = [
+  {
+    title: "View Theses",
+    fetchData: async () => {
+      const response = await fetch(
+        "http://localhost:5000/theses/secretariat-list",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch list of theses for secretariat");
+      }
+      const theses = await response.json();
+
+      return `
+      </ul class="thesis-list">
+      ${theses
+        .map(
+          (thesis) => `
+          <div id="thesis-container-${thesis.id}" class="thesis-container">
+            <li class="thesis-list-item">
+            <div class="thesis-content-wrapper">
+              <div class="thesis-content">
+                <div class="thesis-title"><strong>${thesis.title}</strong></div>
+                <div class="thesis-metadata">
+                  <span id='thesis-status-${
+                    thesis.id
+                  }' class="thesis-status">Status: <span id='status-${
+            thesis.id
+          }' class="status">${thesis.status}
+                </div>
+              </div>
+              <div class="thesis-actions">
+                <button data-id="${
+                  thesis.id
+                }" class="view-thesis">View Details</button>
+              </div>
+            </div>
+            </li>
+            <div class="thesis-form-container" id="view-thesis-form-container-${
+              thesis.id
+            }" style="display:none;">
+                <h4 class="view-topic-header">Thesis Details</h4>
+                <div class='view-line'>
+                <label for="view-title-${thesis.id}">Title:</label>
+                <p id="view-title-${thesis.id}">${thesis.title}</p>
+                </div>
+
+                <div class='view-line'>
+                <label for="view-description-${thesis.id}">Description:</label>
+                <p id="view-description-${thesis.id}">${thesis.description}</p>
+                </div>
+
+                <div class='view-line'>
+                <label for="view-time-elapsed-${
+                  thesis.id
+                }">Time Elapsed:</label>
+                  <p id="view-time-elapsed-${thesis.id}">${
+            thesis.time_elapsed
+          }</p>
+                  </div>
+
+                <div class='view-line'>
+                <label for="view-student-id-${thesis.id}">Student ID:</label>
+                <p id="view-student-id-${thesis.id}">${thesis.student_id}</p>
+                </div>
+
+                <div class='view-line'>
+                <label for="view-supervisor-id-${
+                  thesis.id
+                }">Supervisor ID:</label>
+                  <p id="view-supervisor-id-${thesis.id}">${
+            thesis.supervisor_id
+          }</p>
+                    </div>
+
+                <div class='view-line'>
+                <label for="view-committees-${thesis.id}">Committees:</label>
+                <p id="view-committees-${thesis.id}">${
+            thesis.committees?.length > 0
+              ? `${thesis.committees[0].name}, ${thesis.committees[1].name}`
+              : "None"
+          }</p>
+                  </div>
+
+                <div class='view-line'>
+                  <label for="view-detailed-file-${
+                    thesis.id
+                  }">Detailed File:</label>
+                    <p id="view-detailed-file-${thesis.id}">
+                    ${
+                      thesis.detailed_file
+                        ? `<a  href="${
+                            thesis.detailed_file
+                          }" download id="download-detailed-file-${thesis.id}">
+                      ${thesis.detailed_file.split("\\").pop()}
+                      </a>`
+                        : "No file available"
+                    }
+                    </p>
+                    </div>
+              </div>
+          </div>
+        `
+        )
+        .join("")}
+      </ul>
+      `;
+    },
+  },
+  {
+    title: "Data Import",
+    fetchData: async () => {
+      return `
+        <div id="data-import-container">
+          <h5 id="upload-json-quote">Upload a JSON file with student and instructor information:</h5>
+          <input type="file" id="data-import-file" accept=""application/JSON"" />
+          <button id="upload-json-button">Upload</button>
+        </div>
+      `;
+    },
+    afterRender: async () => {
+      const uploadButton = document.getElementById("upload-json-button");
+      uploadButton.onclick = async () => {
+        const fileInput = document.getElementById("data-import-file");
+        const file = fileInput.files[0];
+        const parentContainer = document.getElementById(
+          "data-import-container"
+        );
+
+        if (!file) {
+          alert("Please select a JSON file to upload.");
+          return;
+        }
+
+        try {
+          const content = await file.text();
+          const data = JSON.parse(content);
+
+          const response = await fetch("http://localhost:5000/users/import", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            },
+            body: JSON.stringify(data),
+          });
+
+          if (!response.ok) {
+            throw new Error(response.error);
+            const errorMessage = document.createElement("p");
+            errorMessage.id = "error-message";
+            errorMessage.textContent =
+              "Error importing data: " + response.error;
+            errorMessage.style.color = "red";
+            errorMessage.style.padding = "5px";
+            parentContainer.appendChild(errorMessage);
+          }
+
+          const successResponse = await response.json();
+
+          const successMessage = document.createElement("p");
+          successMessage.id = "success-message";
+          successMessage.textContent = successResponse.message;
+          successMessage.style.color = "green";
+          successMessage.style.padding = "5px";
+          parentContainer.appendChild(successMessage);
+
+          setTimeout(() => {
+            parentContainer.removeChild(info);
+          }, 5000);
+        } catch (err) {
+          console.error("Error importing data:", err);
+          alert("Failed to import data. Ensure the file format is correct.");
+        }
+      };
+    },
+  },
+  {
+    title: "Management of Theses",
+    fetchData: async () => {
+      // Fetch data for both Active and Under Examination theses
+      const response = await fetch(
+        "http://localhost:5000/theses/secretariat-list",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch theses data");
+      }
+
+      const theses = await response.json();
+
+      return `
+      <h3>Manage Thesis Based on Status</h3>
+        <div class="thesis-list">
+        <ul>
+        ${theses
+          .map((thesis) => {
+            const isReady =
+              !!thesis?.material?.library_link && !!thesis?.grades.length;
+            console.log("Is ready:", isReady);
+            debugger;
+
+            return `
+             <li class="thesis-list-item" id="thesis-${thesis.id}">
+             <div class="thesis-item">
+             <div>
+             <p><strong>${thesis.title}</strong></p>
+             <p><strong class="thesis-status">Status:</strong> ${
+               thesis.status
+             }</p>
+             <p>${thesis.description}</p>
+             </div>
+              <div class="thesis-actions">
+              ${
+                thesis.status === "active"
+                  ? `<button class="record-ap-button" data-id="${thesis.id}">Record AP Number</button>
+              <button class="cancel-thesis-assignment" data-id="${thesis.id}">Cancel Assignment</button>`
+                  : `${
+                      isReady
+                        ? `<button class="set-as-completed" data-id="${thesis.id}">Set As Completed</button>`
+                        : ``
+                    }`
+              }
+              </div>
+              </div>
+             </li>
+            `;
+          })
+          .join("")}
+          </ul>
+          </div>
+      `;
+    },
+    afterRender: () => {
+      // Add Event Listeners for actions
+      document.querySelectorAll(".record-ap-button").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          debugger;
+
+          const thesisId = event.target.dataset.id;
+          const parentElement = document.getElementById(`thesis-${thesisId}`);
+
+          if (!parentElement) {
+            console.error(
+              `Parent element with ID thesis-${thesisId} not found.`
+            );
+            return;
+          }
+
+          let noteSection = document.querySelector(`#note-section-${thesisId}`);
+          if (noteSection) {
+            noteSection.remove();
+          }
+
+          const newElement = document.createElement("div");
+          newElement.classList.add("ap-section");
+          newElement.innerHTML = `
+          <h4> General Assembly AP Number:</h4>
+          <input type="text" id="ap-number" placeholder="Enter AP Number">
+          <button class="record-ap" id="record-ap-${thesisId}">Record</button>
+          `;
+
+          parentElement.appendChild(newElement);
+        });
+      });
+
+      document
+        .querySelectorAll(".cancel-thesis-assignment")
+        .forEach((button) => {
+          button.addEventListener("click", async (event) => {
+            const thesisId = event.target.dataset.id;
+
+            let noteSection = document.querySelector(
+              `#note-section-${thesisId}`
+            );
+            if (noteSection) {
+              noteSection.remove();
+            }
+
+            const parentElement = document.getElementById(`thesis-${thesisId}`);
+            if (!parentElement) {
+              console.error(
+                `Parent element with ID thesis-${thesisId} not found.`
+              );
+              return;
+            }
+
+            // Create new note section
+            noteSection = document.createElement("div");
+            noteSection.classList.add("note-section");
+            noteSection.id = `note-section-${thesisId}`;
+
+            noteSection.innerHTML = `
+              <div class='cancel' id='cancel-${thesisId}'>
+              <h4 for="general-assembly-cancellation" class="general-assembly-cancellation">General
+              Assembly Cancellation:
+              </h4>
+              <form class="cancellation-form">
+                    <label for="cancellation-id" id="cancellation-id">Cancellation ID:
+                    </label>
+                    <input type="number" id="cancellation-id"/>
+                    <label for="cancellation-date" id="cancellation-date">Cancellation Date:
+                    </label>
+                    <input type="date" id="cancellation-date"/>
+                    <button class="cancel-button" id="cancel-thesis-assignment-${thesisId}">Cancel</button>
+                    </form>
+              </div>
+            `;
+
+            document.addEventListener("click", async (event) => {
+              if (event.target.classList.contains("cancel-button")) {
+                const thesisId = event.target.id.split("-").pop();
+
+                console.log(`Cancel button clicked for thesis ID: ${thesisId}`);
+
+                const cancellationId =
+                  document.querySelector("#cancellation-id").value;
+                const cancellationDate =
+                  document.querySelector("#cancellation-date").value;
+
+                console.log(
+                  `Cancellation Details - ID: ${cancellationId}, Date: ${cancellationDate}`
+                );
+
+                const response = await fetch(
+                  `http://localhost:5000/theses/${thesisId}/cancel-thesis`,
+                  {
+                    method: "PUT",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${localStorage.getItem(
+                        "authToken"
+                      )}`,
+                    },
+                    body: JSON.stringify({ cancellationId, cancellationDate }),
+                  }
+                );
+
+                if (response.ok) {
+                  const info = document.getElementById(`thesis-${thesisId}`);
+                  info.textContent = "Thesis canceled";
+                  info.style.color = "red";
+                } else {
+                  alert("Failed to cancel assignment");
+                }
+              }
+            });
+
+            parentElement.appendChild(noteSection);
+          });
+        });
+
+      document.querySelectorAll(".set-as-completed").forEach((button) => {
+        button.addEventListener("click", async (event) => {
+          const thesisId = event.target.dataset.id;
+          const parentElement = document.getElementById(`thesis-${thesisId}`);
+          try {
             const response = await fetch(
-              `http://localhost:5000/theses/${thesisId}/record-grade`,
+              `http://localhost:5000/theses/${thesisId}/completed`,
               {
-                method: "POST",
+                method: "PATCH",
                 headers: {
                   "Content-Type": "application/json",
                   Authorization: `Bearer ${localStorage.getItem("authToken")}`,
                 },
-                body: JSON.stringify({ grade }),
               }
             );
-            if (response.ok) {
-              alert(`Grade recorded for Thesis ID ${thesisId}`);
+            if (!response.ok) {
+              throw new Error("Failed to mark thesis as completed");
+              const info = document.getElementById(`thesis-${thesisId}`);
+              info.textContent = "Failed to mark thesis as completed";
+              info.style.color = "red";
+              info.style.padding = "5px";
+              parentElement.appendChild(info);
             } else {
-              alert("Failed to record grade");
+              const info = document.getElementById(`thesis-${thesisId}`);
+              info.textContent = "Thesis marked as completed";
+              info.style.color = "green";
+              info.style.padding = "5px";
+              parentElement.appendChild(info);
             }
+            setTimeout(() => {
+              parentElement.removeChild(info);
+            }, 5000);
+          } catch (error) {
+            console.error("Error marking thesis as completed:", error);
           }
         });
       });
@@ -1133,6 +1851,7 @@ const instructor_sections = [
   },
 ];
 
+// Menu sections based on user role (student, instructor, secretariat)
 if (userRole === "student") {
   student_sections.forEach(({ title, fetchData }) => {
     const section = document.createElement("div");
@@ -1287,7 +2006,9 @@ if (userRole === "instructor") {
           `view-detailed-file-${thesisId}`
         );
         detailedFileElement.innerHTML = thesisData.detailed_file
-          ? `<a href="${thesisData.detailed_file}" download>
+          ? `<a href="${
+              thesisData.detailed_file
+            }" download id="download-detailed-file-${thesisData.id}">
                ${thesisData.detailed_file.split("\\").pop()}
              </a>`
           : "No file available";
@@ -1308,7 +2029,6 @@ if (userRole === "instructor") {
       const thesis_id = event.target.id.split("-")[3];
 
       try {
-        debugger;
         const response = await fetch(
           `http://localhost:5000/committees/${member_id}/accept`,
           {
@@ -1379,7 +2099,225 @@ if (userRole === "instructor") {
       exportJSON();
     }
   });
+
+  document.addEventListener("click", async (event) => {
+    if (event.target.classList.contains("cancel-button")) {
+      const thesisId = event.target.id.split("-").pop();
+
+      console.log(`Cancel button clicked for thesis ID: ${thesisId}`);
+
+      // Add your cancellation logic here
+      const cancellationId = document.querySelector("#cancellation-id").value;
+      const cancellationDate =
+        document.querySelector("#cancellation-date").value;
+
+      console.log(
+        `Cancellation Details - ID: ${cancellationId}, Date: ${cancellationDate}`
+      );
+
+      const response = await fetch(
+        `http://localhost:5000/theses/${thesisId}/cancel-thesis`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+          body: JSON.stringify({ cancellationId, cancellationDate }),
+        }
+      );
+
+      if (response.ok) {
+        const info = document.getElementById(`thesis-${thesisId}`);
+        info.textContent = "Thesis canceled";
+        info.style.color = "red";
+      } else {
+        alert("Failed to cancel assignment");
+      }
+    }
+  });
 }
+
+if (userRole === "secretariat") {
+  secretariat_sections.forEach(async ({ title, fetchData, afterRender }) => {
+    const section = document.createElement("div");
+    section.classList.add("menu-section");
+
+    const header = document.createElement("div");
+    header.classList.add("menu-header");
+    header.innerHTML = `
+      <span>${title}</span>
+      <span class="icon">&#10095;</span>
+    `;
+
+    const body = document.createElement("div");
+    body.classList.add("menu-body", "collapsed");
+
+    header.onclick = async () => {
+      const isCollapsed = body.classList.toggle("collapsed");
+      header.querySelector(".icon").classList.toggle("expanded", !isCollapsed);
+
+      if (!isCollapsed && !body.dataset.loaded) {
+        try {
+          body.innerHTML = "<p>Loading...</p>";
+          const content = await fetchData();
+          body.innerHTML = content;
+          body.dataset.loaded = "true";
+          if (afterRender) {
+            await afterRender();
+          }
+        } catch (error) {
+          console.error(`Error loading ${title} data:`, error);
+          body.innerHTML = `<p>${error.message}</p>`;
+        }
+      }
+    };
+
+    section.appendChild(header);
+    section.appendChild(body);
+    menuContainer.appendChild(section);
+  });
+
+  document.addEventListener("click", async (event) => {
+    event.preventDefault();
+
+    if (event.target.classList.contains("view-thesis")) {
+      const thesisId = event.target.dataset.id;
+
+      try {
+        const thesis_response = await fetch(
+          `http://localhost:5000/theses/${thesisId}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            },
+          }
+        );
+
+        if (!thesis_response.ok)
+          throw new Error("Failed to fetch thesis details");
+
+        const thesisData = await thesis_response.json();
+        document.getElementById(`view-title-${thesisId}`).textContent =
+          thesisData.title;
+        document.getElementById(`view-description-${thesisId}`).textContent =
+          thesisData.description;
+        document.getElementById(`view-time-elapsed-${thesisId}`).textContent =
+          thesisData.time_elapsed;
+        document.getElementById(`view-student-id-${thesisId}`).textContent =
+          thesisData.student_id;
+        document.getElementById(`view-supervisor-id-${thesisId}`).textContent =
+          thesisData.supervisor_id;
+        document.getElementById(`view-committees-${thesisId}`).textContent =
+          thesisData.committees?.length > 0
+            ? thesisData.committees.map((c) => c.name).join(", ")
+            : "Pending";
+
+        const detailedFileElement = document.getElementById(
+          `view-detailed-file-${thesisId}`
+        );
+        detailedFileElement.innerHTML = thesisData.detailed_file
+          ? `<a href="${
+              thesisData.detailed_file
+            }" download id="download-detailed-file-${thesisData.id}">
+               ${thesisData.detailed_file.split("\\").pop()}
+             </a>`
+          : "No file available";
+
+        // Toggle visibility
+        const formContainer = document.getElementById(
+          `view-thesis-form-container-${thesisId}`
+        );
+        formContainer.style.display =
+          formContainer.style.display === "none" ? "block" : "none";
+      } catch (error) {
+        console.error(`Error fetching thesis data:`, error);
+      }
+    }
+
+    if (event.target.id.startsWith("download-detailed-file")) {
+      const thesisId = event.target.id.split("-").pop();
+      const parentElement = document.getElementById(
+        `view-thesis-form-container-${thesisId}`
+      );
+
+      const fileUrl = event.target.href;
+      const fileName = fileUrl.split("/").pop();
+
+      const response = await fetch(
+        `http://localhost:5000/theses/${thesisId}/detailed-file`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const info = document.createElement("p");
+        info.textContent = "Failed to fetch thesis detailed file.";
+        info.style.color = "red";
+        info.style.marginLeft = "40px";
+        info.style.marginTop = "10px";
+        parentElement.appendChild(info);
+        throw new Error("Failed to fetch thesis detailed file.");
+        return;
+      }
+
+      setTimeout(() => {
+        parentElement.removeChild(info);
+      }, 5000);
+      // 'C:\\Users\\theoe\\Desktop\\WorkingFolder\\thesis-management\\uploads\\32\\1735565373686-1735565373686-ai-3317568.pdf'
+      const detailedFile = await response.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(detailedFile);
+      link.download = fileName;
+      link.click();
+    }
+
+    if (event.target.id.startsWith("record-ap")) {
+      const thesisId = event.target.id.split("-").pop();
+      const parentElement = document.getElementById(`thesis-${thesisId}`);
+
+      const apNumber = document.getElementById("ap-number").value;
+
+      const response = await fetch(
+        `http://localhost:5000/theses/${thesisId}/record-ap`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+          body: JSON.stringify({ apNumber }),
+        }
+      );
+      let info;
+      if (!response.ok) {
+        info = document.createElement("p");
+        info.textContent = "Failed to record AP number.";
+        info.style.color = "red";
+        info.style.marginLeft = "40px";
+        info.style.marginTop = "10px";
+        parentElement.appendChild(info);
+      } else {
+        info = document.createElement("p");
+        info.textContent = "AP number recorded successfully.";
+        info.style.color = "green";
+        info.style.marginLeft = "40px";
+        info.style.marginTop = "10px";
+        parentElement.appendChild(info);
+      }
+      setTimeout(() => {
+        parentElement.removeChild(info);
+      }, 5000);
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   menuContainer.addEventListener("submit", async (event) => {
     event.preventDefault(); // Prevent default form submission behavior
@@ -1483,6 +2421,10 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           const formData = new FormData();
           formData.append("draft", draftFile);
+          formData.append("additional_links", additionalLinks);
+          formData.append("exam_date", examDate);
+          formData.append("exam_details", examDetails);
+          formData.append("library_link", libraryLink);
 
           const payload = {
             additional_links: additionalLinks,
@@ -1495,18 +2437,6 @@ document.addEventListener("DOMContentLoaded", () => {
             `http://localhost:5000/theses/${student_thesis_id}/material`,
             {
               method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-              },
-              body: JSON.stringify(payload),
-            }
-          );
-
-          await fetch(
-            `http://localhost:5000/theses/${student_thesis_id}/draft`,
-            {
-              method: "POST",
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("authToken")}`,
               },

@@ -11,6 +11,36 @@ const usersRoutes = async (req, res, pathParts, queryParams) => {
     const result = await dbQuery(query);
     sendResponse(res, 200, result.rows);
   } else if (
+    req.method === "POST" &&
+    pathParts.length === 2 &&
+    pathParts[1] === "import"
+  ) {
+    const data = await getRequestBody(req);
+    for (instructor of data.instructors) {
+      const query = `INSERT INTO "thesis-management".users (name, email, role, password_hash, contact_details) VALUES ($1, $2, $3, $4, $5) RETURNING *`;
+      const result = await dbQuery(query, [
+        instructor.name,
+        instructor.email,
+        "instructor",
+        instructor.password_hash,
+        instructor.contact_details,
+      ]);
+    }
+    for (student of data.students) {
+      const query = `INSERT INTO "thesis-management".users (name, email, role, password_hash, contact_details) VALUES ($1, $2, $3, $4, $5) RETURNING *`;
+      const result = await dbQuery(query, [
+        student.name,
+        student.email,
+        "student",
+        student.password_hash,
+        student.contact_details,
+      ]);
+    }
+
+    sendResponse(res, 201, {
+      message: "Instructors and students imported successfully.",
+    });
+  } else if (
     req.method === "GET" &&
     pathParts.length === 2 &&
     pathParts[1] === "students"

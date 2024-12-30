@@ -177,7 +177,47 @@ async function renderStatistics() {
   });
 }
 
+function displayAnnouncement(announcement, parentContainer, thesis_id) {
+  const announcementContainer = document.createElement("div");
+  announcementContainer.id = "announcement-section-" + thesis_id;
+  announcementContainer.className = "announcement";
+  announcementContainer.style.margin = "20px";
+
+  const announcementHeader = document.createElement("h4");
+  announcementHeader.className = "announcementHeader";
+  announcementContainer.appendChild(announcementHeader);
+
+  const announcementTextDiv = document.createElement("p");
+  announcementTextDiv.className = "announcementText";
+  announcementContainer.appendChild(announcementTextDiv);
+
+  // Set the announcement header and text
+  announcementHeader.textContent = "Thesis Presentation Announcement:";
+  announcementTextDiv.innerHTML = `
+      <p><strong>Title:</strong> ${announcement.title}</p>
+      <p><strong>Date:</strong> ${new Date(
+        announcement.date
+      ).toLocaleDateString()}</p>
+      <p><strong>Examination Details:</strong> ${announcement.details}</p>
+    `;
+
+  parentContainer.appendChild(announcementContainer);
+  document.getElementById("errorMessage").style.display = "none";
+}
+
+function displayError(errorMessage, parentContainer, thesis_id) {
+  const errorContainer = document.createElement("div");
+  errorContainer.textContent = errorMessage;
+  errorContainer.id = "errorMessage-" + thesis_id;
+  errorContainer.style.color = "orange";
+  errorContainer.style.marginLeft = "20px";
+
+  parentContainer.appendChild(errorContainer);
+}
+
 export {
+  displayError,
+  displayAnnouncement,
   displayInfoMessage,
   getRole,
   filterTheses,

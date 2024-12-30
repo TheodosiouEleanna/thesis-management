@@ -6,7 +6,6 @@ const announcementsRoutes = require("./announcements");
 const committeesRoutes = require("./committees");
 const gradesRoutes = require("./grades");
 const progressRoutes = require("./progress");
-const thesisMaterialRoutes = require("./thesis-material");
 const fileRoutes = require("./files");
 
 module.exports = {
@@ -18,6 +17,5 @@ module.exports = {
   announcements: announcementsRoutes,
   grades: gradesRoutes,
   progress: progressRoutes,
-  ["thesis-material"]: thesisMaterialRoutes,
   fileRoutes: fileRoutes,
 };

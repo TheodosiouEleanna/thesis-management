@@ -1,0 +1,42 @@
+{
+  "students": [
+    {
+      "name": "Jimmy Doe",
+      "email": "jimmydoe@example.com",
+      "password_hash": "hashed_password1",
+      "contact_details": {
+        "phone": "1234567890",
+        "address": "123, Main Street, City, Country"
+      }
+    },
+    {
+      "name": "Samantha Smith",
+      "email": "samanthasmith@example.com",
+      "password_hash": "hashed_password1",
+      "contact_details": {
+        "phone": "2345678901",
+        "address": "234, Main Street, City, Country"
+      }
+    }
+  ],
+  "instructors": [
+    {
+      "name": "Alice Johnson",
+      "email": "alicejohnson@example.com",
+      "password_hash": "hashed_password1",
+      "contact_details": {
+        "phone": "3456789012",
+        "address": "345, Main Street, City, Country"
+      }
+    },
+    {
+      "name": "Dr. Bob Brown",
+      "email": "bobbrown@example.com",
+      "password_hash": "hashed_password1",
+      "contact_details": {
+        "phone": "4567890123",
+        "address": "456, Main Street, City, Country"
+      }
+    }
+  ]
+}

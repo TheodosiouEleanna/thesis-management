@@ -10,16 +10,18 @@ const path = require("path");
 const fs = require("fs");
 
 const thesesRoutes = async (req, res, pathParts, queryParams) => {
-  const thesis_id = pathParts[1]; // Extract ID from URL (if present)
-
-  // Ensure 'uploads' directory exists
-  const uploadsDir = path.join(__dirname, "..", "uploads");
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
+  // Extract ID from URL (if present)
+  let thesis_id = null;
+  if (!isNaN(Number(pathParts[1]))) {
+    thesis_id = Number(pathParts[1]);
   }
 
-  if (req.method === "GET" && pathParts.length === 1) {
-    // Get all theses of a supervisor
+  if (
+    req.method === "GET" &&
+    pathParts.length === 1 &&
+    !queryParams.student_id &&
+    !!queryParams.user_id
+  ) {
     const user_id = queryParams.user_id;
     const supervisor_thesis_query = `SELECT * FROM "thesis-management".theses WHERE supervisor_id = $1`;
     const supervisor_thesis_result = await dbQuery(supervisor_thesis_query, [
@@ -75,8 +77,54 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
     sendResponse(res, 200, result.rows);
   } else if (req.method === "GET" && pathParts.length === 2 && thesis_id) {
     // Get thesis by ID
-    const query = `SELECT * FROM "thesis-management".theses WHERE student_id = $1`;
+    const query = `SELECT * FROM "thesis-management".theses WHERE id = $1`;
     const thesis_result = await dbQuery(query, [thesis_id]);
+
+    if (thesis_result.rows.length === 0) {
+      return sendResponse(res, 404, { error: "Thesis not found" });
+    }
+
+    const committees_result = await dbQuery(
+      `SELECT * FROM "thesis-management".committees
+      LEFT JOIN "thesis-management".users ON "thesis-management".committees.member_id = "thesis-management".users.id
+      WHERE thesis_id = $1 `,
+      [thesis_result.rows[0].id]
+    );
+
+    const supervisor_result = await dbQuery(
+      `SELECT * FROM "thesis-management".users WHERE id = $1`,
+      [thesis_result.rows[0].supervisor_id]
+    );
+
+    sendResponse(
+      res,
+      thesis_result.rows.length ? 200 : 404,
+      thesis_result.rows.length
+        ? {
+            id: thesis_result.rows[0].id,
+            title: thesis_result.rows[0].title,
+            description: thesis_result.rows[0].description,
+            detailed_file: thesis_result.rows[0].detailed_file,
+            student_id: thesis_result.rows[0].student_id,
+            supervisor_id: thesis_result.rows[0].supervisor_id,
+            status: thesis_result.rows[0].status,
+            committees: committees_result.rows,
+            supervisor: supervisor_result.rows[0],
+            time_elapsed: getThesisDuration(thesis_result.rows[0].started_at)
+              .timeElapsedString,
+            detailed_file: thesis_result.rows[0].detailed_file,
+          }
+        : {}
+    );
+  } else if (
+    req.method === "GET" &&
+    pathParts.length === 1 &&
+    !!queryParams.student_id
+  ) {
+    const student_id = queryParams.student_id;
+    // Get thesis by ID
+    const query = `SELECT * FROM "thesis-management".theses WHERE student_id = $1`;
+    const thesis_result = await dbQuery(query, [student_id]);
 
     if (thesis_result.rows.length === 0) {
       return sendResponse(res, 404, { error: "Thesis not found" });
@@ -108,10 +156,62 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
             status: thesis_result.rows[0].status,
             committees: committees_result.rows,
             supervisor: supervisor_result.rows[0],
-            time_elapsed: getThesisDuration(thesis_result.rows[0].started_at),
+            time_elapsed: getThesisDuration(thesis_result.rows[0].started_at)
+              .timeElapsedString,
             detailed_file: thesis_result.rows[0].detailed_file,
           }
         : {}
+    );
+  } else if (
+    req.method === "GET" &&
+    pathParts.length === 2 &&
+    pathParts[1] === "secretariat-list"
+  ) {
+    const query = `SELECT * FROM "thesis-management".theses WHERE status = 'active' OR status = 'under_examination'`;
+
+    const thesis_result = await dbQuery(query);
+
+    const committees_list = [];
+    const material_list = [];
+    const grades_list = [];
+    for (const thesis of thesis_result.rows) {
+      const committees_result = await dbQuery(
+        `SELECT * FROM "thesis-management".committees
+      LEFT JOIN "thesis-management".users ON "thesis-management".committees.member_id = "thesis-management".users.id
+      WHERE thesis_id = $1 AND invite_status = 'accepted'`,
+        [thesis.id]
+      );
+      committees_list.push(committees_result.rows);
+      const material_result = await dbQuery(
+        `SELECT * FROM "thesis-management".thesis_material WHERE thesis_id = $1`,
+        [thesis.id]
+      );
+      material_list.push(material_result.rows[0]);
+
+      const grades_result = await dbQuery(
+        `SELECT * FROM "thesis-management".grades WHERE thesis_id = $1`,
+        [thesis.id]
+      );
+      grades_list.push(grades_result.rows);
+    }
+
+    sendResponse(
+      res,
+      200,
+      thesis_result.rows.map((thesis, index) => {
+        return {
+          id: thesis.id,
+          title: thesis.title,
+          description: thesis.description,
+          student_id: thesis.student_id,
+          supervisor_id: thesis.supervisor_id,
+          status: thesis.status,
+          committees: committees_list[index],
+          time_elapsed: getThesisDuration(thesis.started_at).timeElapsedString,
+          material: material_list[index],
+          grades: grades_list[index],
+        };
+      })
     );
   } else if (
     req.method === "GET" &&
@@ -125,7 +225,12 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
       res,
       result.rows.length ? 200 : 404,
       result.rows.length
-        ? { time_elapsed: getThesisDuration(result.rows[0].started_at) }
+        ? {
+            time_elapsed: getThesisDuration(result.rows[0].started_at)
+              .timeElapsed,
+            time_elapsed_string: getThesisDuration(result.rows[0].started_at)
+              .timeElapsedString,
+          }
         : {}
     );
   } else if (req.method === "POST" && pathParts.length === 1) {
@@ -166,7 +271,8 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
     const file = files[0];
     const filePath = handleFileUpload(
       file.content,
-      `${Date.now()}-${file.filename}`
+      `${Date.now()}-${file.filename}`,
+      thesis_result.rows[0].id
     );
 
     const supervisor_id = queryParams.supervisor_id;
@@ -228,6 +334,11 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
     thesis_id &&
     req.headers["content-type"].includes("multipart/form-data")
   ) {
+    const thesis_query = `SELECT * FROM "thesis-management".theses WHERE id = $1`;
+    const thesis_result = await dbQuery(thesis_query, [thesis_id]);
+    if (!thesis_result.rows.length) {
+      return sendResponse(res, 404, { error: "Thesis not found" });
+    }
     // Update thesis
     const contentType = req.headers["content-type"];
     if (!contentType || !contentType.includes("multipart/form-data")) {
@@ -254,7 +365,8 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
       file = files[0];
       filePath = handleFileUpload(
         file.content,
-        `${Date.now()}-${file.filename}`
+        `${Date.now()}-${file.filename}`,
+        thesis_result.rows[0].id
       );
     }
 
@@ -352,6 +464,57 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
       sendResponse(res, 500, { error: "Internal server error" });
     }
   } else if (
+    req.method === "PUT" &&
+    thesis_id &&
+    pathParts.length === 3 &&
+    pathParts[2] === "cancel-thesis"
+  ) {
+    const student = !!queryParams.student;
+    try {
+      // Retrieve thesis data based on thesis_id
+      const thesis = await dbQuery(
+        `SELECT * FROM "thesis-management".theses WHERE id = $1`,
+        [thesis_id]
+      );
+
+      if (thesis.rowCount === 0) {
+        return sendResponse(res, 404, { error: "Thesis not found" });
+      }
+
+      const { cancellationId, cancellationDate } = await getRequestBody(req);
+
+      const cancellationReason = student
+        ? "at the request of the Student"
+        : "By Supervisor";
+
+      // update the thesis status to "cancelled"
+      const updateThesisStatusResult = await dbQuery(
+        `UPDATE "thesis-management".theses SET status = 'cancelled', student_id = NULL, cancellation_id = $1, cancellation_date = $2, cancellation_reason = $3 WHERE id = $4`,
+        [cancellationId, cancellationDate, cancellationReason, thesis_id]
+      );
+
+      // Respond with a success message
+      sendResponse(res, 200, {
+        message: "Thesis canceled successfully.",
+      });
+    } catch (error) {
+      console.error("Error while canceling thesis:", error);
+      sendResponse(res, 500, { error: "Internal server error" });
+    }
+  } else if (
+    req.method === "PATCH" &&
+    pathParts.length === 3 &&
+    pathParts[2] === "record-ap" &&
+    thesis_id
+  ) {
+    const { apNumber } = await getRequestBody(req);
+    const query = `UPDATE "thesis-management".theses SET ap_number = $1 WHERE id = $2 RETURNING *`;
+    const result = await dbQuery(query, [apNumber, thesis_id]);
+    if (result.rowCount === 0) {
+      return sendResponse(res, 404, { error: "Thesis not found" });
+    }
+    sendResponse(res, 200, { message: "AP number updated successfully" });
+  } else if (
     req.method === "GET" &&
     pathParts.length === 3 &&
     pathParts[2] === "members"
@@ -410,30 +573,82 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
     pathParts.length === 3 &&
     pathParts[2] === "material"
   ) {
+    const contentType = req.headers["content-type"];
+    if (!contentType || !contentType.includes("multipart/form-data")) {
+      return sendResponse(res, 400, {
+        error: "Invalid Content-Type. Expected multipart/form-data",
+      });
+    }
+
+    // Extract the boundary from Content-Type header
+    const boundary = contentType.split("boundary=")[1];
+    if (!boundary) {
+      return sendResponse(res, 400, {
+        error: "Boundary not found in Content-Type",
+      });
+    }
+
     const query1 = `SELECT * FROM "thesis-management".thesis_material WHERE thesis_id = $1`;
     const thesis_material = await dbQuery(query1, [thesis_id]);
 
-    if (thesis_material.rows.length === 0) {
-      const { additional_links, exam_date, exam_details, library_link } =
-        await getRequestBody(req);
+    const query2 = `SELECT * FROM "thesis-management".theses WHERE id = $1`;
+    const thesis = await dbQuery(query2, [thesis_id]);
 
-      const query = `UPDATE "thesis-management".thesis_material SET additional_material = $1, exam_date = $2, exam_details = $3, library_link = $4 WHERE thesis_id = $5 RETURNING *`;
+    if (thesis_material.rows.length === 0) {
+      return sendResponse(res, 404, { error: "Thesis not found." });
+    }
+
+    if (thesis_material.rows.length === 1) {
+      const parsedData = await parseMultipartData(req, boundary);
+      const { fields, files } = parsedData;
+      const { additional_links, exam_date, exam_details, library_link } =
+        fields;
+
+      let filePath = null;
+
+      if (files[0]) {
+        file = files[0];
+        filePath = handleFileUpload(
+          file.content,
+          `${Date.now()}-${file.filename}`,
+          thesis.rows[0].id
+        );
+      }
+      const query = `UPDATE "thesis-management".thesis_material SET additional_material = $1, exam_date = $2, exam_details = $3, library_link = $4, file_url = $5, exam_title = $6 WHERE thesis_id = $7 RETURNING *`;
       const result = await dbQuery(query, [
-        thesis_id,
         additional_links,
         exam_date,
         exam_details,
         library_link,
+        filePath,
+        "Thesis Presentation for " + thesis.rows[0].title,
+        thesis_id,
       ]);
       sendResponse(res, 200, result.rows[0]);
     } else {
       // insert
+      const parsedData = await parseMultipartData(req, boundary);
+      const { fields, files } = parsedData;
+      const { additional_links, exam_date, exam_details, library_link } =
+        fields;
     }
   } else if (
     req.method === "POST" &&
     pathParts.length === 3 &&
     pathParts[2] === "draft"
   ) {
+    // Ensure 'uploads' directory exists
+    const uploadsDir = path.join(
+      __dirname,
+      "..",
+      "uploads",
+      thesis_id.toString()
+    );
+
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true }); // Ensure parent directories are created if needed
+    }
+
     // Generate a unique file name to avoid name conflicts
     const uniqueFileName = `draft-${Date.now()}.pdf`;
 
@@ -478,9 +693,10 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
     pathParts[2] === "draft"
   ) {
     // Serve the uploaded files
-    const filePath = path.join(__dirname, req.url);
+    const filePath = queryParams.file_url;
 
     fs.readFile(filePath, (err, data) => {
+      console.log(`[${new Date().toISOString()}] Serving file: ${filePath}`);
       if (err) {
         // Use sendResponse() to send 404 error
         sendResponse(res, 404, { error: "File not found" });
@@ -490,6 +706,112 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
       res.writeHead(200, { "Content-Type": "application/octet-stream" });
       res.end(data);
     });
+  } else if (
+    req.method === "GET" &&
+    pathParts.length === 3 &&
+    pathParts[2] === "detailed-file"
+  ) {
+    // Serve the uploaded files
+
+    const thesis_query = `SELECT * FROM "thesis-management".theses WHERE id = $1`;
+
+    const thesis_result = await dbQuery(thesis_query, [thesis_id]);
+
+    if (!thesis_result.rows.length) {
+      return sendResponse(res, 404, { error: "Thesis not found" });
+    }
+
+    const filePath = thesis_result.rows[0].detailed_file;
+    // 'C:\\Users\\theoe\\Desktop\\WorkingFolder\\thesis-management\\uploads\\32\\1735565373686-1735565373686-ai-3317568.pdf'
+    fs.readFile(filePath, (err, data) => {
+      console.log(`[${new Date().toISOString()}] Serving file: ${filePath}`);
+      if (err) {
+        // Use sendResponse() to send 404 error
+        sendResponse(res, 404, { error: "File not found" });
+        return;
+      }
+
+      res.writeHead(200, { "Content-Type": "application/octet-stream" });
+      res.end(data);
+    });
+  } else if (
+    req.method === "PATCH" &&
+    pathParts.length === 3 &&
+    pathParts[2] === "change-status" &&
+    thesis_id
+  ) {
+    // Change the status of the thesis
+    const thesis_query = `SELECT * FROM "thesis-management".theses WHERE id = $1`;
+    const thesis_result = await dbQuery(thesis_query, [thesis_id]);
+    if (!thesis_result.rows.length) {
+      return sendResponse(res, 404, { error: "Thesis not found" });
+    }
+    // Update the thesis status
+    const query = `UPDATE "thesis-management".theses SET status = $1 WHERE id = $2 RETURNING *`;
+    const result = await dbQuery(query, ["under_examination", thesis_id]);
+    if (result.rows.length === 0) {
+      return sendResponse(res, 404, { error: "Thesis not found" });
+    }
+    // Return the updated thesis
+    sendResponse(res, 200, result.rows[0]);
+  } else if (
+    req.method === "PATCH" &&
+    pathParts.length === 3 &&
+    pathParts[2] === "completed" &&
+    thesis_id
+  ) {
+    const thesis_query = `SELECT * FROM "thesis-management".theses WHERE id = $1`;
+    const thesis_result = await dbQuery(thesis_query, [thesis_id]);
+    if (!thesis_result.rows.length) {
+      return sendResponse(res, 404, { error: "Thesis not found" });
+    }
+    // Update the thesis status
+    const query = `UPDATE "thesis-management".theses SET status = $1 WHERE id = $2 RETURNING *`;
+    const result = await dbQuery(query, ["completed", thesis_id]);
+
+    sendResponse(res, 200, result.rows[0]);
+  } else if (
+    req.method === "POST" &&
+    pathParts.length === 3 &&
+    thesis_id &&
+    pathParts[2] === "generate-presentation-announcement"
+  ) {
+    // Step 1: Check if the student has completed the presentation details
+    const studentDetailsQuery = `SELECT * FROM "thesis-management".thesis_material WHERE thesis_id = $1`;
+    const result = await dbQuery(studentDetailsQuery, [thesis_id]);
+
+    if (result.rows.length === 0) {
+      return sendResponse(res, 404, { error: "Thesis not found" });
+    }
+
+    const thesisMaterial = result.rows[0];
+
+    // Check if the presentation details are complete
+    if (
+      !thesisMaterial.exam_date ||
+      !thesisMaterial.exam_title ||
+      !thesisMaterial.exam_details
+    ) {
+      sendResponse(res, 400, {
+        error: "Presentation details are incomplete",
+      });
+    } else {
+      // Step 2: Generate the presentation announcement text
+      const announcementText = `
+        Announcement for Thesis Presentation:
+        Title: ${thesisMaterial.exam_title}
+        Date: ${thesisMaterial.exam_date.toLocaleDateString()}
+        Examination Details: ${thesisMaterial.exam_details}
+      `;
+
+      // Step 4: Send the response back to the frontend
+      sendResponse(res, 200, {
+        text: announcementText,
+        title: thesisMaterial.exam_title,
+        date: thesisMaterial.exam_date,
+        details: thesisMaterial.exam_details,
+      });
+    }
   } else {
     // Use sendResponse() for 404 Not Found responses
     sendResponse(res, 404, { error: "Not Found" });
