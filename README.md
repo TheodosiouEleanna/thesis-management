@@ -57,7 +57,7 @@ If you prefer not to use Docker, you can manually set up PostgreSQL by:
 Installing PostgreSQL locally.
 Creating a database named `postgres` and configuring the connection settings according to the `.env` file.
 
-### 4. Install Backend Dependencies
+### 3. Install Backend Dependencies
 
 Navigate to the backend directory and install dependencies:
 
@@ -65,7 +65,7 @@ Navigate to the backend directory and install dependencies:
 npm install
 ```
 
-### 5. Start the Backend Server
+### 4. Start the Backend Server
 
 Run the Node.js API server:
 
@@ -75,7 +75,7 @@ node server.js
 
 The API will be available at `http://localhost:5000`.
 
-### 6. Serve the Frontend
+### 5. Serve the Frontend
 
 Navigate to the directory containing your frontend files (e.g., public or client) and start the server:
 
@@ -104,3 +104,5 @@ If you use VSCode Live Server for the client, it refreshes the page on some form
   **Instructor**: Jane Smith
   **Student**: John Doe
   **Secretariat**: Jake Wilson
+
+  - You will find the database dump in the repo, you can run it as a script to create the schema load the data.
