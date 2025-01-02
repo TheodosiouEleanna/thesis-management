@@ -10,6 +10,7 @@ const PORT = process.env.APP_PORT || 5000;
 const logger = require("./logger");
 const protectedRoutes = require("./routes/routes");
 const url = require("url"); // Import the url module
+const announcementRoutes = require("./routes/announcements");
 
 const server = http.createServer((req, res) => {
   const method = req.method;
@@ -34,6 +35,14 @@ const server = http.createServer((req, res) => {
   // Route to login directly if it's the login endpoint
   if (pathParts[0] === "login") {
     return logger(req, res, loginRoutes(req, res));
+  }
+
+  if (pathParts[0] === "announcements") {
+    return logger(
+      req,
+      res,
+      announcementRoutes(req, res, pathParts, queryParams)
+    );
   }
 
   // Apply authentication middleware for all protected routes

@@ -3,12 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard</title>
     <link rel="stylesheet" href="styles/styles.css" />
+    <link rel="stylesheet" href="styles/announcements.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
+      href="https://fonts.googleapis.com/css2?family=Cabin:ital,wght@0,400..700;1,400..700&display=swap"
       rel="stylesheet"
-      href="/thesis-management-client/styles/dashboard.css"
     />
+    <title>Announcements</title>
   </head>
   <body>
     <header>
@@ -16,29 +19,16 @@
         <img src="public/logo.png" alt="ThesisFlow Logo" id="logo" />
         <h1 id="dashboard-title">ThesisFlow</h1>
       </div>
-      <button id="logout-button">Logout</button>
     </header>
     <div id="menu-container">
       <!-- Static placeholders for menu items -->
-      <div id="role-specific-menu">
+      <div id="announcement-container">
         <!-- Dynamic sections will be added here -->
       </div>
     </div>
-    <!-- <main id="content">
-      <!-- Dynamic Content Here -->
-    </main> -->
     <script
-      src="/thesis-management-client/scripts/dashboard.js"
+      src="/thesis-management-client/scripts/announcements.js"
       type="module"
     ></script>
-    <script
-      src="/thesis-management-client/scripts/validateSession.js"
-      type="module"
-    ></script>
-    <script
-      src="/thesis-management-client/scripts/logout.js"
-      type="module"
-    ></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </body>
 </html>

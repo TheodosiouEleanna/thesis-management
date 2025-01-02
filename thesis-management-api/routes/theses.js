@@ -262,19 +262,6 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
       });
     }
 
-    if (!files[0]) {
-      return sendResponse(res, 400, {
-        error: "No file provided for 'detailedFile'",
-      });
-    }
-
-    const file = files[0];
-    const filePath = handleFileUpload(
-      file.content,
-      `${Date.now()}-${file.filename}`,
-      thesis_result.rows[0].id
-    );
-
     const supervisor_id = queryParams.supervisor_id;
     const query = `
     INSERT INTO "thesis-management".theses (title, description, student_id, supervisor_id, status)
@@ -289,6 +276,23 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
     ]);
 
     const thesisId = result.rows[0].id;
+    const thesis_material_query = `INSERT INTO "thesis-management".thesis_material (thesis_id) VALUES ($1) RETURNING *`;
+    const thesis_material_result = await dbQuery(thesis_material_query, [
+      thesisId,
+    ]);
+
+    if (!files[0]) {
+      return sendResponse(res, 400, {
+        error: "No file provided for 'detailedFile'",
+      });
+    }
+
+    const file = files[0];
+    const filePath = handleFileUpload(
+      file.content,
+      `${Date.now()}-${file.filename}`,
+      result.rows[0].id
+    );
 
     // Update the record with the file path
     const updateQuery = `
@@ -804,6 +808,13 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
         Examination Details: ${thesisMaterial.exam_details}
       `;
 
+      const announcement_query = `INSERT INTO "thesis-management".announcements (title, content, presentation_date) VALUES ($1, $2, $3) RETURNING *`;
+      const announcement_result = await dbQuery(announcement_query, [
+        thesisMaterial.exam_title,
+        announcementText,
+        thesisMaterial.exam_date,
+      ]);
+
       // Step 4: Send the response back to the frontend
       sendResponse(res, 200, {
         text: announcementText,
@@ -811,6 +822,110 @@ const thesesRoutes = async (req, res, pathParts, queryParams) => {
         date: thesisMaterial.exam_date,
         details: thesisMaterial.exam_details,
       });
+    }
+  } else if (
+    req.method === "GET" &&
+    pathParts.length === 2 &&
+    !thesis_id &&
+    pathParts[1] === "statistics" &&
+    !!queryParams.user_id
+  ) {
+    try {
+      // Fetch average completion time
+      const avgCompletionTimeQuery = `
+        SELECT EXTRACT(MONTH FROM AVG(completed_at - started_at)) AS avg_completion_time
+        FROM "thesis-management".theses
+        WHERE completed_at IS NOT NULL;
+      `;
+      const avgCompletionTimeResult = await dbQuery(avgCompletionTimeQuery);
+      const avgCompletionTime =
+        avgCompletionTimeResult.rows[0].avg_completion_time;
+
+      // Fetch average grade (assuming a grade column exists)
+      const avgGradeQuery = `
+        SELECT AVG(grade) AS avg_grade
+        FROM "thesis-management".grades
+        GROUP BY thesis_id;
+      `;
+      const avgGradeResult = await dbQuery(avgGradeQuery);
+      const avgGrade = avgGradeResult.rows[0].avg_grade;
+
+      // Fetch thesis roles count
+      const totalThesesSupervisorQuery = `
+        SELECT
+          COUNT(*) FILTER (WHERE supervisor_id = $1) AS supervised_theses
+         FROM "thesis-management".theses WHERE supervisor_id = ${queryParams.user_id};
+      `;
+      const totalThesesResult = await dbQuery(totalThesesSupervisorQuery, [
+        queryParams.user_id,
+      ]);
+      const totalThesesSupervisor = totalThesesResult.rows[0];
+
+      const totalThesesCommitteesQuery = `
+        SELECT COUNT(*) FILTER (WHERE member_id = $1) AS committee_member_theses
+        FROM "thesis-management".committees
+        WHERE member_id = ${queryParams.user_id};
+        `;
+
+      const totalThesesCommitteesResult = await dbQuery(
+        totalThesesCommitteesQuery,
+        [queryParams.user_id]
+      );
+
+      const totalThesesCommittees = totalThesesCommitteesResult.rows[0];
+
+      const totalThesesOtherRolesQuery = `
+        SELECT COUNT(*) FILTER (WHERE member_id = $1) AS other_roles
+        FROM "thesis-management".committees
+        WHERE member_id = ${queryParams.user_id};
+        `;
+
+      const totalThesesOtherRolesResult = await dbQuery(
+        totalThesesOtherRolesQuery,
+        [queryParams.user_id]
+      );
+
+      const totalThesesOtherRoles = totalThesesOtherRolesResult.rows[0];
+
+      sendResponse(res, 200, {
+        avgCompletionTime: {
+          labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+          data: [
+            avgCompletionTime || 10,
+            avgCompletionTime || 15,
+            avgCompletionTime || 8,
+            avgCompletionTime || 12,
+            avgCompletionTime || 9,
+            avgCompletionTime || 14,
+          ], // Mock monthly data for simplicity
+        },
+        avgGrade: {
+          labels: ["2020", "2021", "2022", "2023", "2024", "2025"],
+          data: [
+            avgGrade || 7.8,
+            avgGrade || 8.2,
+            avgGrade || 8.5,
+            avgGrade || 8.1,
+            avgGrade || 8.7,
+            avgGrade || 9.0,
+          ], // Mock yearly data for simplicity
+        },
+        totalTheses: {
+          labels: [
+            "Supervised Theses",
+            "Committee Member Theses",
+            "Other Roles",
+          ],
+          data: [
+            Number(totalThesesSupervisor) || 12,
+            Number(totalThesesCommittees) || 8,
+            Number(totalThesesOtherRoles) || 5,
+          ],
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+      sendResponse(res, 500, { message: "Internal Server Error" });
     }
   } else {
     // Use sendResponse() for 404 Not Found responses

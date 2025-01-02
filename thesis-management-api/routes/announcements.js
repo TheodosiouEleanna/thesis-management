@@ -1,11 +1,39 @@
+const { sendResponse, getRequestBody, getDateRange } = require("../utils");
+const { dbQuery } = require("../db");
+
 const announcementsRoutes = async (req, res, pathParts, queryParams) => {
   const id = pathParts[2]; // Extract ID from URL (if present)
 
-  if (req.method === "GET" && pathParts.length === 2) {
-    // Get all announcements
-    const query = "SELECT * FROM announcements";
-    const result = await dbQuery(query);
-    sendResponse(res, 200, result.rows);
+  if (req.method === "GET" && pathParts.length === 1 && queryParams.timeRange) {
+    const { timeRange } = queryParams;
+
+    try {
+      let dateRange;
+      if (timeRange) {
+        dateRange = getDateRange(timeRange);
+      } else {
+        throw new Error(
+          "Invalid request: Provide either startDate and endDate or a timeRange"
+        );
+        sendResponse(res, 400, { error: "Invalid request" });
+      }
+
+      const { startDate: start, endDate: end } = dateRange;
+
+      // Query the database
+      const query = `
+        SELECT title, presentation_date, content, created_at
+        FROM "thesis-management".announcements
+        WHERE presentation_date >= $1 AND presentation_date <= $2
+        ORDER BY presentation_date ASC;
+      `;
+      const results = await dbQuery(query, [start, end]);
+
+      sendResponse(res, 200, results.rows);
+    } catch (error) {
+      console.error("Error fetching announcements:", error.message);
+      sendResponse(res, 400, { error: error.message });
+    }
   } else if (req.method === "GET" && id) {
     // Get a specific announcement
     const query = "SELECT * FROM announcements WHERE id = $1";

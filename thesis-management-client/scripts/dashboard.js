@@ -646,7 +646,7 @@ const instructor_sections = [
       `;
     },
     afterRender: async () => {
-      await renderStatistics();
+      await renderStatistics(user);
     },
   },
   {

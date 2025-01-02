@@ -84,9 +84,9 @@ function downloadFile(filename, content) {
   link.click();
 }
 
-async function renderStatistics() {
-  debugger;
+async function renderStatistics(user) {
   console.log("Render statistics");
+
   const avgCompletionTimeCanvas = document.getElementById(
     "avgCompletionTimeChart"
   );
@@ -98,83 +98,125 @@ async function renderStatistics() {
     return;
   }
 
-  const avgCompletionTimeCtx = avgCompletionTimeCanvas.getContext("2d");
-  const avgGradeCtx = avgGradeCanvas.getContext("2d");
-  const totalThesesCtx = totalThesesCanvas.getContext("2d");
-
-  new Chart(avgCompletionTimeCtx, {
-    type: "bar",
-    data: {
-      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-      datasets: [
-        {
-          label: "Average Completion Time (months)",
-          data: [10, 15, 8, 12, 9, 14],
-          backgroundColor: "rgba(75, 192, 192, 0.6)", // Green bars
-          borderColor: "rgba(75, 192, 192, 1)", // Green border
-          borderWidth: 1,
+  try {
+    // Fetch data from API
+    const response = await fetch(
+      `http://localhost:5000/theses/statistics?user_id=${user.id}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
-      ],
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { beginAtZero: true },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch thesis statistics: ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+
+    const { avgCompletionTime, avgGrade, totalTheses } = data;
+
+    // Validate data structure
+    if (
+      !avgCompletionTime ||
+      !avgGrade ||
+      !totalTheses ||
+      !Array.isArray(avgCompletionTime.labels) ||
+      !Array.isArray(avgCompletionTime.data) ||
+      !Array.isArray(avgGrade.labels) ||
+      !Array.isArray(avgGrade.data) ||
+      !Array.isArray(totalTheses.labels) ||
+      !Array.isArray(totalTheses.data)
+    ) {
+      throw new Error("Invalid data format.");
+    }
+
+    console.log("Statistics data:", avgGrade.date);
+    // Render Average Completion Time Chart
+    const avgCompletionTimeCtx = avgCompletionTimeCanvas.getContext("2d");
+    new Chart(avgCompletionTimeCtx, {
+      type: "bar",
+      data: {
+        labels: avgCompletionTime.labels,
+        datasets: [
+          {
+            label: "Average Completion Time (months)",
+            data: avgCompletionTime.data,
+            backgroundColor: "rgba(75, 192, 192, 0.6)", // Green bars
+            borderColor: "rgba(75, 192, 192, 1)", // Green border
+            borderWidth: 1,
+          },
+        ],
       },
-    },
-  });
-
-  // Average Grade Chart
-  new Chart(avgGradeCtx, {
-    type: "line",
-    data: {
-      labels: ["2020", "2021", "2022", "2023", "2024", "2025"],
-      datasets: [
-        {
-          label: "Average Grade",
-          data: [7.8, 8.2, 8.5, 8.1, 8.7, 9.0],
-          borderColor: "rgba(75, 192, 192, 1)",
-          backgroundColor: "rgba(75, 192, 192, 0.2)",
-          borderWidth: 2,
-          fill: true,
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true },
         },
-      ],
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { beginAtZero: true },
       },
-    },
-  });
+    });
 
-  // Total Theses Chart
-  new Chart(totalThesesCtx, {
-    type: "pie",
-    data: {
-      labels: ["Supervised Theses", "Committee Member Theses", "Other Roles"],
-      datasets: [
-        {
-          label: "Role Distribution",
-          data: [12, 8, 5],
-          backgroundColor: [
-            "rgba(75, 192, 192, 0.8)",
-            "rgba(54, 162, 235, 0.8)",
-            "rgba(255, 206, 86, 0.8)",
-          ],
-          borderColor: [
-            "rgba(75, 192, 192, 1)",
-            "rgba(54, 162, 235, 1)",
-            "rgba(255, 206, 86, 1)",
-          ],
-          borderWidth: 1,
+    // Render Average Grade Chart
+    const avgGradeCtx = avgGradeCanvas.getContext("2d");
+    new Chart(avgGradeCtx, {
+      type: "line",
+      data: {
+        labels: avgGrade.labels,
+        datasets: [
+          {
+            label: "Average Grade",
+            data: avgGrade.data,
+            borderColor: "rgba(75, 192, 192, 1)",
+            backgroundColor: "rgba(75, 192, 192, 0.2)",
+            borderWidth: 2,
+            fill: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true },
         },
-      ],
-    },
-    options: {
-      responsive: true,
-    },
-  });
+      },
+    });
+
+    // Render Total Theses Chart
+    const totalThesesCtx = totalThesesCanvas.getContext("2d");
+    new Chart(totalThesesCtx, {
+      type: "pie",
+      data: {
+        labels: totalTheses.labels,
+        datasets: [
+          {
+            label: "Role Distribution",
+            data: totalTheses.data,
+            backgroundColor: [
+              "rgba(75, 192, 192, 0.8)",
+              "rgba(54, 162, 235, 0.8)",
+              "rgba(255, 206, 86, 0.8)",
+            ],
+            borderColor: [
+              "rgba(75, 192, 192, 1)",
+              "rgba(54, 162, 235, 1)",
+              "rgba(255, 206, 86, 1)",
+            ],
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+      },
+    });
+  } catch (error) {
+    console.error("Error rendering statistics:", error.message);
+  }
 }
 
 function displayAnnouncement(announcement, parentContainer, thesis_id) {

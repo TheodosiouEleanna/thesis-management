@@ -132,10 +132,41 @@ const handleFileUpload = (content, filename, thesis_id) => {
   return filePath;
 };
 
+const getDateRange = (timeRange) => {
+  const now = new Date();
+  let startDate, endDate;
+
+  switch (timeRange) {
+    case "past_week":
+      startDate = new Date();
+      startDate.setDate(now.getDate() - 7);
+      endDate = now;
+      break;
+
+    case "past_month":
+      startDate = new Date();
+      startDate.setMonth(now.getMonth() - 1);
+      endDate = now;
+      break;
+
+    case "past_year":
+      startDate = new Date();
+      startDate.setFullYear(now.getFullYear() - 1);
+      endDate = now;
+      break;
+
+    default:
+      throw new Error("Invalid time range keyword");
+  }
+
+  return { startDate, endDate };
+};
+
 module.exports = {
   handleFileUpload,
   parseMultipartData,
   getRequestBody,
   sendResponse,
   getThesisDuration,
+  getDateRange,
 };

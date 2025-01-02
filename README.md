@@ -105,4 +105,6 @@ If you use VSCode Live Server for the client, it refreshes the page on some form
   **Student**: John Doe
   **Secretariat**: Jake Wilson
 
-  - You will find the database dump in the repo, you can run it as a script to create the schema load the data.
+- You will find the database dump in the repo, you can run it as a script to create the schema load the data.
+
+- For Chart data, because there are not enough completed theses on the system, it fallbacks to mock data if values are null.
