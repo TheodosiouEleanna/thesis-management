@@ -1,28 +1,49 @@
 .announcement-list {
-  list-style: none;
   padding: 0;
   margin: 0;
-  padding-bottom: 70px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .announcement-container {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background-color: #fff;
+}
+
+.announcement-container:hover {
+  transform: translateY(-1px); /* Lift effect on hover */
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+}
+
+#announcement-list-item {
   display: flex;
   flex-direction: column;
-  padding: 5px;
-  background-color: #f9f9f9;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 5px;
-  width: 100%;
+  gap: 0.5rem;
 }
 
-.announcement-list-item {
-  background-color: #ffffff;
-  border: 1px solid #dddddd;
-  padding: 10px;
-  margin-bottom: 15px;
-  transition: box-shadow 0.3s ease-in-out;
+#announcement-list-item strong {
+  font-size: 1.2rem;
+  color: #333;
 }
 
-.announcement-list-item:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+#announcement-list-item span {
+  font-size: 0.9rem;
+  color: #777;
+}
+
+#announcement-list-item p {
+  font-size: 1rem;
+  color: #555;
+  line-height: 1.5;
+  margin: 0;
+}
+#announcement-list-item span {
+  color: #007bff;
+  font-weight: bold;
 }

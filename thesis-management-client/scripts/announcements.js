@@ -11,28 +11,35 @@ const fetchAnnouncements = async (timeRange) => {
   const data = await response.json(); // Or XML based on your API response
   return `
     <ul class="announcement-list">
-      ${data
-        .map(
-          (item) =>
-            `
-          <div id="announcement-container-${
-            item.id
-          }" class="announcement-container">
-          <div id="announcement-list-item">
-            <li>
+  ${data
+    .map(
+      (item) =>
+        `
+      <div id="announcement-container-${
+        item.id
+      }" class="announcement-container">
+        <div id="announcement-list-item">
+          <li>
             <strong>${item.title}</strong>
-            <br /> Date: ${new Date(item.presentation_date)
+            <br />
+            <span>
+              Date:
+            </span>
+            ${new Date(item.presentation_date)
               .toString()
               .split("GMT")[0]
               .trim()}
-            <br /> Description: ${item.content}
-            </li>
-          </div>
-          </div>
-          `
-        )
-        .join("")}
-    </ul>`;
+            <br />
+            <p>
+              ${item.content}
+            </p>
+          </li>
+        </div>
+      </div>
+      `
+    )
+    .join("")}
+</ul>`;
 };
 
 // Function to create the announcement section with a dropdown
